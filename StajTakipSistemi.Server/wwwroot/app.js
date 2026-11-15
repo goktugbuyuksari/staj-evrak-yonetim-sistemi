@@ -1,4 +1,4 @@
-﻿const { createApp, ref, computed, onMounted } = Vue;
+﻿const { createApp, ref, computed, onMounted, watch } = Vue;
 
 createApp({
   setup() {
@@ -93,6 +93,65 @@ createApp({
       start.setDate(start.getDate() - 30);
       return start.toLocaleDateString('tr-TR');
     });
+
+    // Türkiye Resmi Tatilleri ve İş Günü Hesaplayıcı (Doküman Bölüm 6.3)
+    const isOfficialHoliday = (d) => {
+      const month = d.getMonth() + 1;
+      const day = d.getDate();
+      const year = d.getFullYear();
+      const dateStr = ${year}--;
+
+      // Sabit Tarihli Resmi Tatiller (Ay-Gün)
+      const fixed = ['1-1', '4-23', '5-1', '5-19', '7-15', '8-30', '10-29'];
+      if (fixed.includes(${month}-)) return true;
+
+      // 2025 - 2026 Dini Bayram & Arife Günleri
+      const variableHolidays = [
+        // 2025 Ramazan & Kurban
+        '2025-03-29', '2025-03-30', '2025-03-31', '2025-04-01',
+        '2025-06-05', '2025-06-06', '2025-06-07', '2025-06-08', '2025-06-09',
+        // 2026 Ramazan & Kurban
+        '2026-03-19', '2026-03-20', '2026-03-21', '2026-03-22',
+        '2026-05-26', '2026-05-27', '2026-05-28', '2026-05-29', '2026-05-30'
+      ];
+      return variableHolidays.includes(dateStr);
+    };
+
+    const calculateDateHelper = () => {
+      if (!uploadForm.value.startDate || !uploadForm.value.endDate) return;
+      const start = new Date(uploadForm.value.startDate + 'T00:00:00');
+      const end = new Date(uploadForm.value.endDate + 'T00:00:00');
+      if (end < start) {
+        uploadForm.value.declaredDaysCount = 0;
+        return;
+      }
+
+      const dayNames = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
+      const allowedDays = selectedDaysArray.value.length > 0
+        ? selectedDaysArray.value
+        : ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma'];
+
+      let workingDays = 0;
+      const cur = new Date(start);
+      while (cur <= end) {
+        const dayName = dayNames[cur.getDay()];
+        if (allowedDays.includes(dayName) && !isOfficialHoliday(cur)) {
+          workingDays++;
+        }
+        cur.setDate(cur.getDate() + 1);
+      }
+
+      uploadForm.value.declaredDaysCount = workingDays;
+    };
+
+    // Tarih veya seçilen günler değiştiğinde otomatik güncelle
+    watch([
+      () => uploadForm.value.startDate,
+      () => uploadForm.value.endDate,
+      () => selectedDaysArray.value
+    ], () => {
+      calculateDateHelper();
+    }, { deep: true });
 
     // Helper: API İsteği Gönderme
     const apiFetch = async (url, options = {}) => {
@@ -569,6 +628,7 @@ createApp({
 
     // İlk Yükleme
     onMounted(async () => {
+      calculateDateHelper();
       if (token.value) {
         await loadUserProfile();
         if (currentUser.value?.role === 'ROLE_ADMIN') {
@@ -627,7 +687,8 @@ createApp({
       generateEk17Demo,
       getStatusBadgeClass,
       getFileIcon,
-      formatDate
+      formatDate,
+      calculateDateHelper
     };
   }
 }).mount('#app');
