@@ -99,11 +99,11 @@ createApp({
       const month = d.getMonth() + 1;
       const day = d.getDate();
       const year = d.getFullYear();
-      const dateStr = ${year}--;
+      const dateStr = year + '-' + String(month).padStart(2, '0') + '-' + String(day).padStart(2, '0');
 
       // Sabit Tarihli Resmi Tatiller (Ay-Gün)
       const fixed = ['1-1', '4-23', '5-1', '5-19', '7-15', '8-30', '10-29'];
-      if (fixed.includes(${month}-)) return true;
+      if (fixed.includes(month + '-' + day)) return true;
 
       // 2025 - 2026 Dini Bayram & Arife Günleri
       const variableHolidays = [
