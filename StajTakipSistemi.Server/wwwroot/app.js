@@ -7,6 +7,8 @@ createApp({
     const token = ref(localStorage.getItem('token') || '');
     const loading = ref(false);
     const loginError = ref('');
+    const showLoginPassword = ref(false);
+    const showRegisterPassword = ref(false);
     const authTab = ref('login'); // 'login' veya 'register'
     const registerSuccess = ref('');
     const registerError = ref('');
@@ -645,6 +647,8 @@ createApp({
       loading,
       loginError,
       loginForm,
+      showLoginPassword,
+      showRegisterPassword,
       authTab,
       registerForm,
       registerSuccess,
