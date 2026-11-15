@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.IO;
 using System.Linq;
 using System.Security.Claims;
@@ -24,6 +24,11 @@ namespace StajTakipSistemi.Server.Controllers
         private readonly AppDbContext _context;
         private readonly IDocumentValidationEngine _validationEngine;
         private static readonly string[] AllowedExtensions = { ".pdf", ".doc", ".docx", ".jpg", ".jpeg", ".png" };
+        private static readonly JsonSerializerOptions _jsonOptions = new()
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            PropertyNameCaseInsensitive = true
+        };
 
         public DocumentsController(AppDbContext context, IDocumentValidationEngine validationEngine)
         {
@@ -129,7 +134,7 @@ namespace StajTakipSistemi.Server.Controllers
 
             // Kural motorunu çalıştır
             var report = _validationEngine.ValidateDocument(doc, dbRecord);
-            doc.ValidationReportJson = JsonSerializer.Serialize(report);
+            doc.ValidationReportJson = JsonSerializer.Serialize(report, _jsonOptions);
             doc.Status = report.FinalStatus;
             doc.IsApproved = report.IsOverallValid;
 
@@ -189,7 +194,7 @@ namespace StajTakipSistemi.Server.Controllers
             {
                 try
                 {
-                    report = JsonSerializer.Deserialize<ValidationReport>(doc.ValidationReportJson);
+                    report = JsonSerializer.Deserialize<ValidationReport>(doc.ValidationReportJson, _jsonOptions);
                 }
                 catch { }
             }
@@ -256,7 +261,7 @@ namespace StajTakipSistemi.Server.Controllers
                 .FirstOrDefaultAsync(r => r.StudentNumber == doc.StudentNumber || r.TcNo == doc.StudentTcNo);
 
             var report = _validationEngine.ValidateDocument(doc, dbRecord);
-            doc.ValidationReportJson = JsonSerializer.Serialize(report);
+            doc.ValidationReportJson = JsonSerializer.Serialize(report, _jsonOptions);
             doc.Status = report.FinalStatus;
             doc.IsApproved = report.IsOverallValid;
             doc.UpdatedAt = DateTime.UtcNow;

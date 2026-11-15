@@ -1,4 +1,4 @@
-const { createApp, ref, computed, onMounted } = Vue;
+﻿const { createApp, ref, computed, onMounted } = Vue;
 
 createApp({
   setup() {
@@ -329,9 +329,33 @@ createApp({
     const viewReport = (doc) => {
       selectedReportDoc.value = doc;
       try {
-        parsedReport.value = JSON.parse(doc.validationReportJson || '{}');
+        const raw = typeof doc.validationReportJson === 'string'
+          ? JSON.parse(doc.validationReportJson || '{}')
+          : (doc.validationReportJson || {});
+
+        const rawList = raw.results || raw.Results || [];
+        const normalizedResults = rawList.map(r => ({
+          ruleName: r.ruleName || r.RuleName || 'Kural Kontrolü',
+          category: r.category || r.Category || 'Genel',
+          isValid: r.isValid !== undefined ? r.isValid : (r.IsValid !== undefined ? r.IsValid : false),
+          severity: r.severity !== undefined ? r.severity : (r.Severity !== undefined ? r.Severity : (r.isValid || r.IsValid ? 0 : 2)),
+          message: r.message || r.Message || '',
+          suggestion: r.suggestion || r.Suggestion || '',
+          fieldName: r.fieldName || r.FieldName || ''
+        }));
+
+        parsedReport.value = {
+          isOverallValid: raw.isOverallValid !== undefined ? raw.isOverallValid : (raw.IsOverallValid ?? false),
+          finalStatus: raw.finalStatus || raw.FinalStatus || doc.status,
+          errorCount: raw.errorCount !== undefined ? raw.errorCount : (raw.ErrorCount ?? normalizedResults.filter(x => x.severity === 2).length),
+          warningCount: raw.warningCount !== undefined ? raw.warningCount : (raw.WarningCount ?? normalizedResults.filter(x => x.severity === 1).length),
+          passedCount: raw.passedCount !== undefined ? raw.passedCount : (raw.PassedCount ?? normalizedResults.filter(x => x.severity === 0).length),
+          suggestedSubmissionDate: raw.suggestedSubmissionDate || raw.SuggestedSubmissionDate || '',
+          results: normalizedResults
+        };
       } catch (e) {
-        parsedReport.value = { results: [] };
+        console.error('Rapor ayrıştırma hatası:', e);
+        parsedReport.value = { results: [], errorCount: 0, warningCount: 0, passedCount: 0, isOverallValid: false };
       }
     };
 
