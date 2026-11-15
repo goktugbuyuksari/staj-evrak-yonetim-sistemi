@@ -7,7 +7,7 @@ Bu proje, öğrencilerin staj başvuru evrakı olan **Ek-16 belgesini** sisteme 
 
 ## 🚀 Hızlı Başlangıç (Projeyi Çalıştırma)
 
-Projeyi çalıştırmak için terminalden sunucu projesinin bulunduğu dizine gidip `dotnet run` komutunu çalıştırınız:
+Projeyi çalıştırmak için terminalden sunucu projesinin bulunduğu dizine gidip `dotnet run` komutunu çalıştırın:
 
 ```bash
 cd StajTakipSistemi.Server
@@ -34,36 +34,7 @@ Sistem ilk açıldığında otomatik olarak SQLite veri tabanını oluşturur ve
 
 ---
 
-## 🎯 Vize Sunumu Sırasında Jüriye Gösterilebilecek Demo Adımları
 
-1. **Oturum Açma ve 5 Hatalı Girişte Kilitleme (Doküman 4.1):**
-   * Giriş ekranında rastgele yanlış bir şifreyi 5 kez deneyin.
-   * 5. denemeden sonra sistemin *"5 kez üst üste hatalı giriş yaptığınız için hesabınız güvenlik gerekçesiyle kilitlenmiştir"* uyarısı verdiğini ve kilitlendiğini gösterin.
-   * Admin hesabıyla giriş yapıp **"Güvenlik & Kilitli Hesaplar"** sekmesinden kilitlenen hesabı ve hatalı deneme loglarını gösterin, tek tıkla kilidi açın.
-2. **Yetkilendirme Katmanı ve 403 Koruması (Doküman 4.2):**
-   * Öğrenci olarak giriş yapıldığında Admin paneline erişimin engellendiğini ve yetkisiz isteklerin HTTP 403 ile yakalandığını gösterin.
-3. **Evrak Format Kontrolü (Doküman 4.4):**
-   * "Evrak Yükle" modalında `.zip` veya `.txt` gibi geçersiz bir dosya seçmeye çalıştığınızda sistemin anında kırmızı uyarı pop-up'ı ile dosyayı reddettiğini gösterin.
-   * Yalnızca `.pdf`, `.docx`, `.doc`, `.png`, `.jpg` formatlarına izin verildiğini doğrulayın.
-4. **Resmi Tatiller Düşülerek Staj Gün Hesabı (Doküman 6.3):**
-   * Staj tarih aralığını resmi tatile (örn: 15 Temmuz veya 29 Ekim) denk gelecek şekilde seçin.
-   * Beyan edilen günü 20 yapın. Kural motorunun resmi tatili düşerek net günü 19 hesapladığını ve *"1 gün uyuşmazlık var"* uyarısını raporda gösterin.
-5. **30 Gün Teslim Kuralı ve Önerilen Tarih (Doküman 6.3):**
-   * Belge teslim tarihini staj başlangıcından 10 gün öncesine ayarlayın.
-   * Sistemin kuralı ihlal saydığını ve *"Önerilen En Geç Teslim Tarihi: [Tarih]"* bilgisini dinamik olarak ürettiğini gösterin.
-6. **Mühendis Sayısı < 5 Uyarısı (Doküman 6.5):**
-   * Mühendis sayısını 3 yapın. Arayüzde anında sarı renkli uyarı kutucuğunun açıldığını ve *"Mühendisin Mezun Olduğu Bölüm"* sorusunu zorunlu kıldığını gösterin.
-7. **Öğrenci Veri Seti Çapraz Karşılaştırması (Doküman 4.3):**
-   * Belgedeki Ad veya TC'yi bilerek farklı girin. Kural motorunun üniversite veri tabanındaki orijinal kayıtla uyuşmazlığı tespit ettiğini ve raporda kırmızı uyarı olarak sunduğunu gösterin.
-8. **Belge Değişmezliği (Doküman 5):**
-   * Tüm kuralları sağlayan bir belge yükleyin. Belgenin statüsü **"Tamamlandı"** olur.
-   * Öğrenci ekranında bu belgenin üzerinde **"Kilitli"** ibaresi belirdiğini ve silme/güncelleme butonlarının korumaya alındığını gösterin.
-9. **Admin Test Veri Seti Yönetimi (Doküman 4.3):**
-   * Admin panelinde **"Test Veri Seti Yönetimi"** sekmesine gelin. Proje ana dizinindeki `test_ogrenci_veriseti.csv` dosyasını yükleyin. 12 sütunlu öğrenci listesinin başarıyla yüklendiğini gösterin.
-10. **Tamamlanan Belgeler Sekmesi (Doküman 4.7):**
-    * Admin panelindeki özel **"Tamamlanan Belgeler Sekmesi"**ne gelin. Burada yalnızca onaylanmış evrakların listelendiğini ve Admin'e özel yetkilerin (revize etme, silme ve Final için Ek-17 üretme hazırlığı) çalıştığını gösterin.
-
----
 
 ## 🏛️ Nesne Yönelimli Programlama (NYP) Mimarisi
 
@@ -110,8 +81,3 @@ StajTakipSistemi/
 
 ---
 
-## 📄 IEEE Proje Raporu ve Diyagramlar
-
-Vize teslimi için hazırlanan dokümanlar:
-* **IEEE Raporu:** [`Documentation/IEEE_Staj_Takip_Sistemi_Raporu.md`](Documentation/IEEE_Staj_Takip_Sistemi_Raporu.md)
-* **Diyagramlar Dokümanı:** [`Documentation/UML_ve_Class_Diyagramlari.md`](Documentation/UML_ve_Class_Diyagramlari.md)
