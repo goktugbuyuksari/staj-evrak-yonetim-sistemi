@@ -24,7 +24,7 @@ createApp({
 
     // Evrak Yükleme Form Verisi (Doküman Kural ve Kısıtlarına Göre Varsayılanlar)
     const uploadForm = ref({
-      studentFullName: 'Göktuğ Yılmaz',
+      studentFullName: 'Göktuğ Büyüksarı',
       studentTcNo: '10000000146',
       nationality: 'TC',
       studentNumber: '210202001',

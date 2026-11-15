@@ -187,7 +187,7 @@ namespace StajTakipSistemi.Server.Services
         {
             var sb = new StringBuilder();
             sb.AppendLine("Öğrenci Ad Soyad;TC Kimlik No;Uyruk;Öğrenci No;Doğum Tarihi;İkametgâh Adresi;Bölüm;Ek-16 Teslim Yılı;Daha Önce Yapılan Staj Gün Sayısı;E-posta;Telefon No;Sağlık Yardımı Statüsü");
-            sb.AppendLine("Göktuğ Yılmaz;10000000146;TC;210202001;15.05.2003;Atatürk Mah. Cumhuriyet Cad. No: 12 Daire: 4 İzmit / Kocaeli;Yazılım Mühendisliği;2025-2026;0;ogrenci@ogr.kocaeli.edu.tr;+90 532 111 22 33;Var");
+            sb.AppendLine("Göktuğ Büyüksarı;10000000146;TC;210202001;15.05.2003;Atatürk Mah. Cumhuriyet Cad. No: 12 Daire: 4 İzmit / Kocaeli;Yazılım Mühendisliği;2025-2026;0;ogrenci@ogr.kocaeli.edu.tr;+90 532 111 22 33;Var");
             sb.AppendLine("Ayşe Kaya;28324716298;TC;210202002;22.08.2002;İnönü Mah. İstiklal Cad. No: 45 Daire: 2 Gebze / Kocaeli;Yazılım Mühendisliği;2025-2026;20;ayse.kaya@ogr.kocaeli.edu.tr;+90 533 222 33 44;Var");
             sb.AppendLine("Ali Al-Mansoor;99123456780;Yabancı;210202099;10.01.2001;Fatih Mah. Bağdat Cad. No: 8 Daire: 6 Kadıköy / İstanbul;Bilgisayar Mühendisliği;2025-2026;0;ali.mansoor@ogr.kocaeli.edu.tr;+90 535 333 44 55;Yok");
             return sb.ToString();

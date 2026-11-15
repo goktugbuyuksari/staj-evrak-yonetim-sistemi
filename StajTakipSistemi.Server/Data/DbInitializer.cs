@@ -52,7 +52,7 @@ namespace StajTakipSistemi.Server.Data
                 context.StudentDatasetRecords.AddRange(
                     new StudentDatasetRecord
                     {
-                        FullName = "Göktuğ Büyüksarı    ",
+                        FullName = "Göktuğ Büyüksarı",
                         TcNo = "10000000146",
                         Nationality = "TC",
                         StudentNumber = "250229061",
