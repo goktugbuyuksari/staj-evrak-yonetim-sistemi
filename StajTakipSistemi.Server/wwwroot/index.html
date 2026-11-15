@@ -19,47 +19,43 @@
 <body class="bg-slate-50 text-slate-800 min-h-screen">
   <div id="app" v-cloak>
     
-    <!-- Üst Başlık (Header / Navbar) -->
-    <header class="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white shadow-lg sticky top-0 z-40">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap justify-between items-center gap-4">
-        <div class="flex items-center space-x-3">
-          <div class="w-10 h-10 rounded-xl bg-blue-500/20 border border-blue-400/30 flex items-center justify-center text-blue-300 text-xl font-bold">
-            <i class="fa-solid fa-file-shield"></i>
-          </div>
-          <div>
-            <h1 class="text-lg font-bold tracking-tight">Staj Evrak Doğrulama ve Yönetim Sistemi</h1>
-            <p class="text-xs text-blue-200">Programlama Laboratuvarı III • Ek-16 Otomatik Denetim Platformu</p>
-          </div>
+    <!-- ================= 1. GİRİŞ VE KAYIT EKRANI (KOCAELİ ÜNİVERSİTESİ SPLIT EKRAN) ================= -->
+    <div v-if="!currentUser" class="min-h-screen w-full flex flex-col md:flex-row relative bg-white overflow-x-hidden">
+      
+      <!-- Sol Yarı (Umuttepe Kampüs Fotoğrafı + Yeşil Gradyan Karartma) -->
+      <div class="w-full md:w-1/2 min-h-[340px] md:min-h-screen relative flex flex-col justify-between p-6 sm:p-10 md:p-12 text-white bg-cover bg-center overflow-hidden"
+           style="background-image: linear-gradient(135deg, rgba(6, 78, 59, 0.88) 0%, rgba(15, 23, 42, 0.82) 100%), url('/img/kou_campus.jpg'); background-size: cover; background-position: center;">
+        
+        <!-- Sol Üst: KOÜ Logo ve İsim -->
+        <div class="flex items-center gap-3 relative z-10">
+          <img src="/img/kou_logo.png" alt="KOÜ Logo" class="w-12 h-12 object-contain rounded-full shadow-lg bg-white/10 p-0.5 border border-white/20" />
+          <span class="text-base sm:text-lg md:text-xl font-bold tracking-wider uppercase text-white drop-shadow">KOCAELİ ÜNİVERSİTESİ</span>
         </div>
 
-        <!-- Oturum Bilgisi / Çıkış Butonu -->
-        <div v-if="currentUser" class="flex items-center space-x-4">
-          <div class="text-right hidden sm:block">
-            <div class="text-sm font-semibold flex items-center justify-end gap-1.5">
-              <span>{{ currentUser.fullName }}</span>
-              <span :class="currentUser.role === 'ROLE_ADMIN' ? 'bg-amber-500/20 text-amber-300 border-amber-400/30' : 'bg-emerald-500/20 text-emerald-300 border-emerald-400/30'" class="text-[10px] uppercase font-bold px-2 py-0.5 rounded border">
-                {{ currentUser.role === 'ROLE_ADMIN' ? 'YÖNETİCİ' : 'ÖĞRENCİ' }}
-              </span>
-            </div>
-            <div class="text-xs text-slate-300">{{ currentUser.email }}</div>
-          </div>
-          <button @click="logout" class="bg-red-500/20 hover:bg-red-600/30 text-red-200 border border-red-400/30 px-3 py-1.5 rounded-lg text-sm transition flex items-center gap-1.5">
-            <i class="fa-solid fa-arrow-right-from-bracket"></i>
-            <span class="hidden md:inline">Güvenli Çıkış</span>
-          </button>
+        <!-- Sol Alt: Başlık ve Açıklama -->
+        <div class="space-y-2 mt-auto pt-16 relative z-10">
+          <h2 class="text-2xl sm:text-3xl md:text-4xl font-extrabold text-white leading-tight tracking-tight drop-shadow-md">
+            Staj Evrak Doğrulama ve<br class="hidden sm:inline" /> Yönetim Sistemi
+          </h2>
+          <p class="text-xs sm:text-sm text-emerald-100 font-medium drop-shadow">
+            Programlama Laboratuvarı III • Ek-16 Otomatik Denetim Platformu
+          </p>
         </div>
       </div>
-    </header>
 
-    <!-- ANA İÇERİK BÖLÜMÜ -->
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <!-- Sağ Yarı (Temiz Beyaz Arka Plan ve Telif) -->
+      <div class="w-full md:w-1/2 min-h-[300px] md:min-h-screen bg-slate-50 flex flex-col justify-end p-6 md:p-8">
+        <div class="text-center md:text-right text-xs text-slate-400">
+          © 2026 Kocaeli Üniversitesi • Bilgisayar Mühendisliği
+        </div>
+      </div>
 
-      <!-- ================= 1. GİRİŞ VE KAYIT EKRANI ================= -->
-      <div v-if="!currentUser" class="max-w-md mx-auto my-8">
-        <div class="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
+      <!-- Ortada Konumlanan Giriş / Kayıt Kartı (Floating Card) -->
+      <div class="fixed inset-0 flex items-center justify-center p-4 z-20 pointer-events-none">
+        <div class="bg-white rounded-2xl shadow-2xl border border-slate-200/90 w-full max-w-md max-h-[92vh] overflow-y-auto pointer-events-auto transition-all">
           
-          <!-- Giriş / Kayıt Ol Sekme Başlıkları (Hoca 4. Madde) -->
-          <div class="flex border-b border-slate-200 bg-slate-100 text-sm font-bold">
+          <!-- Sekme Başlıkları: Giriş Yap / Hesap Oluştur -->
+          <div class="flex border-b border-slate-200 bg-slate-100/90 text-sm font-bold sticky top-0 z-10 backdrop-blur-sm">
             <button @click="authTab = 'login'" :class="authTab === 'login' ? 'bg-white text-blue-700 border-b-2 border-blue-600' : 'text-slate-500 hover:text-slate-700'" class="flex-1 py-3 text-center transition flex items-center justify-center gap-2">
               <i class="fa-solid fa-right-to-bracket"></i> Giriş Yap
             </button>
@@ -76,10 +72,10 @@
                 <i class="fa-solid fa-bolt text-amber-500"></i> Hızlı Test Girişi (Tek Tıkla):
               </div>
               <div class="grid grid-cols-2 gap-2">
-                <button @click="fillLogin('ogrenci', 'Ogrenci123!')" class="bg-white hover:bg-blue-50 border border-blue-200 text-blue-700 font-medium py-1.5 px-2 rounded text-left flex items-center gap-1.5">
+                <button @click="fillLogin('ogrenci', 'Ogrenci123!')" class="bg-white hover:bg-blue-50 border border-blue-200 text-blue-700 font-medium py-1.5 px-2 rounded text-left flex items-center gap-1.5 shadow-sm transition">
                   <i class="fa-solid fa-graduation-cap"></i> Öğrenci Girişi
                 </button>
-                <button @click="fillLogin('admin', 'Admin123!')" class="bg-white hover:bg-indigo-50 border border-indigo-200 text-indigo-700 font-medium py-1.5 px-2 rounded text-left flex items-center gap-1.5">
+                <button @click="fillLogin('admin', 'Admin123!')" class="bg-white hover:bg-indigo-50 border border-indigo-200 text-indigo-700 font-medium py-1.5 px-2 rounded text-left flex items-center gap-1.5 shadow-sm transition">
                   <i class="fa-solid fa-shield-halved"></i> Admin Girişi
                 </button>
               </div>
@@ -114,12 +110,12 @@
                 </div>
               </div>
 
-              <div class="text-[11px] text-slate-500 flex items-center gap-1 bg-amber-50 p-2 rounded border border-amber-200">
-                <i class="fa-solid fa-shield text-amber-600"></i>
+              <div class="text-[11px] text-amber-900 flex items-center gap-1.5 bg-amber-50 p-2.5 rounded-lg border border-amber-200">
+                <i class="fa-solid fa-shield-halved text-amber-600"></i>
                 <span>Güvenlik Kuralı (Doküman 4.1): 5 hatalı denemede sistem hesabı kilitler.</span>
               </div>
 
-              <button type="submit" :disabled="loading" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg text-sm shadow transition flex items-center justify-center gap-2">
+              <button type="submit" :disabled="loading" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-xl text-sm shadow-md transition flex items-center justify-center gap-2">
                 <i v-if="loading" class="fa-solid fa-circle-notch fa-spin"></i>
                 <span v-else>Giriş Yap</span>
               </button>
@@ -195,8 +191,45 @@
         </div>
       </div>
 
-      <!-- ================= 2. ÖĞRENCİ PANELİ ================= -->
-      <div v-else-if="currentUser.role === 'ROLE_STUDENT'" class="space-y-6">
+    </div>
+
+    <!-- ================= 2. GİRİŞ YAPILMIŞKEN GÖRÜNEN PANEL (NAVBAR + DASHBOARD) ================= -->
+    <div v-else class="min-h-screen flex flex-col">
+      <!-- Üst Başlık (Header / Navbar) -->
+      <header class="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white shadow-lg sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap justify-between items-center gap-4">
+          <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-xl bg-blue-500/20 border border-blue-400/30 flex items-center justify-center text-blue-300 text-xl font-bold">
+              <i class="fa-solid fa-file-shield"></i>
+            </div>
+            <div>
+              <h1 class="text-lg font-bold tracking-tight">Staj Evrak Doğrulama ve Yönetim Sistemi</h1>
+              <p class="text-xs text-blue-200">Programlama Laboratuvarı III • Ek-16 Otomatik Denetim Platformu</p>
+            </div>
+          </div>
+
+          <!-- Oturum Bilgisi / Çıkış Butonu -->
+          <div class="flex items-center space-x-4">
+            <div class="text-right hidden sm:block">
+              <div class="text-sm font-semibold flex items-center justify-end gap-1.5">
+                <span>{{ currentUser.fullName }}</span>
+                <span :class="currentUser.role === 'ROLE_ADMIN' ? 'bg-amber-500/20 text-amber-300 border-amber-400/30' : 'bg-emerald-500/20 text-emerald-300 border-emerald-400/30'" class="text-[10px] uppercase font-bold px-2 py-0.5 rounded border">
+                  {{ currentUser.role === 'ROLE_ADMIN' ? 'YÖNETİCİ' : 'ÖĞRENCİ' }}
+                </span>
+              </div>
+              <div class="text-xs text-slate-300">{{ currentUser.email }}</div>
+            </div>
+            <button @click="logout" class="bg-red-500/20 hover:bg-red-600/30 text-red-200 border border-red-400/30 px-3 py-1.5 rounded-lg text-sm transition flex items-center gap-1.5">
+              <i class="fa-solid fa-arrow-right-from-bracket"></i>
+              <span class="hidden md:inline">Güvenli Çıkış</span>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <!-- ANA İÇERİK BÖLÜMÜ -->
+      <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full">      <!-- ================= 2. ÖĞRENCİ PANELİ ================= -->
+      <div v-if="currentUser.role === 'ROLE_STUDENT'" class="space-y-6">
 
         <!-- Öğrenci Karşılama ve Profil Kartı -->
         <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 flex flex-wrap justify-between items-center gap-4">
@@ -603,6 +636,7 @@
       </div>
 
     </main>
+    </div> <!-- v-else panel bitişi -->
 
     <!-- ================= MODAL 1: EVRAK YÜKLEME VE KURAL MOTORU FORMU ================= -->
     <div v-if="showUploadModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
