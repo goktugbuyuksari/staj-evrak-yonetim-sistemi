@@ -34,7 +34,8 @@ namespace StajTakipSistemi.Server.Services.OOP_RuleEngine
                 new InternshipWorkDaysValidator(_holidayService),
                 new EmployerApprovalValidator(),
                 new EngineerCountValidator(),
-                new DatasetMatchValidator()
+                new DatasetMatchValidator(),
+                new DocumentContentMatchValidator()
             };
         }
 

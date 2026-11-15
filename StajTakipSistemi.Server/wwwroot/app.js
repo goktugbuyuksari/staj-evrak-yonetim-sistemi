@@ -7,10 +7,27 @@ createApp({
     const token = ref(localStorage.getItem('token') || '');
     const loading = ref(false);
     const loginError = ref('');
+    const authTab = ref('login'); // 'login' veya 'register'
+    const registerSuccess = ref('');
+    const registerError = ref('');
 
     const loginForm = ref({
       username: 'ogrenci',
       password: 'Ogrenci123!'
+    });
+
+    // Hoca Soru-Cevap 4. Madde: Kullanıcılar hesaplarını kendileri oluşturabilmelidir
+    const registerForm = ref({
+      username: '',
+      password: '',
+      email: '',
+      fullName: '',
+      studentNumber: '',
+      tcNo: '',
+      nationality: 'TC',
+      department: 'Yazılım Mühendisliği',
+      phoneNumber: '',
+      address: ''
     });
 
     // Öğrenci Dokümanları
@@ -147,6 +164,39 @@ createApp({
         }
       } catch (err) {
         loginError.value = 'Sunucu bağlantı hatası oluştu.';
+      } finally {
+        loading.value = false;
+      }
+    };
+
+    // Hoca Soru-Cevap 4. Madde: Kullanıcı Kayıt Olma Fonksiyonu
+    const register = async () => {
+      loading.value = true;
+      registerError.value = '';
+      registerSuccess.value = '';
+
+      try {
+        const res = await fetch('/api/auth/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(registerForm.value)
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          registerError.value = data.message || 'Kayıt oluşturulamadı.';
+          return;
+        }
+
+        registerSuccess.value = data.message || 'Kayıt başarılı! Şimdi giriş yapabilirsiniz.';
+        // Formu temizle ve giriş sekmesine yönlendir
+        loginForm.value.username = registerForm.value.username;
+        loginForm.value.password = registerForm.value.password;
+        setTimeout(() => {
+          authTab.value = 'login';
+        }, 1500);
+      } catch (err) {
+        registerError.value = 'Kayıt sırasında sunucu hatası oluştu.';
       } finally {
         loading.value = false;
       }
@@ -511,6 +561,11 @@ createApp({
       loading,
       loginError,
       loginForm,
+      authTab,
+      registerForm,
+      registerSuccess,
+      registerError,
+      register,
       documents,
       showUploadModal,
       selectedReportDoc,

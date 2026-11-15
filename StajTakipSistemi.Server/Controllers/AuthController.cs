@@ -42,6 +42,59 @@ namespace StajTakipSistemi.Server.Controllers
             return Ok(result);
         }
 
+        /// <summary>
+        /// Hoca Soru-Cevap 4. Madde: Kullanıcılar hesaplarını kendileri oluşturabilmeli, şifrelerini belirleyebilmelidir.
+        /// </summary>
+        [HttpPost("register")]
+        public async Task<IActionResult> Register([FromBody] RegisterRequest request)
+        {
+            if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
+            {
+                return BadRequest(new { success = false, message = "Kullanıcı adı ve şifre zorunludur." });
+            }
+
+            string uname = request.Username.Trim().ToLowerInvariant();
+            if (await _context.Users.AnyAsync(u => u.Username.ToLower() == uname))
+            {
+                return BadRequest(new { success = false, message = "Bu kullanıcı adı zaten kullanılmaktadır." });
+            }
+
+            if (!string.IsNullOrWhiteSpace(request.Email))
+            {
+                string email = request.Email.Trim().ToLowerInvariant();
+                if (await _context.Users.AnyAsync(u => u.Email.ToLower() == email))
+                {
+                    return BadRequest(new { success = false, message = "Bu e-posta adresi zaten kullanılmaktadır." });
+                }
+            }
+
+            var student = new StudentUser
+            {
+                Username = request.Username.Trim(),
+                Email = request.Email?.Trim() ?? $"{request.Username.Trim()}@ogr.kocaeli.edu.tr",
+                FullName = request.FullName?.Trim() ?? request.Username.Trim(),
+                StudentNumber = request.StudentNumber?.Trim() ?? "",
+                TcNo = request.TcNo?.Trim() ?? "",
+                Nationality = request.Nationality ?? "TC",
+                Department = string.IsNullOrWhiteSpace(request.Department) ? "Yazılım Mühendisliği" : request.Department.Trim(),
+                PhoneNumber = request.PhoneNumber?.Trim() ?? "",
+                ResidentialAddress = request.Address?.Trim() ?? ""
+            };
+            student.SetPassword(request.Password);
+
+            _context.StudentUsers.Add(student);
+            _context.SystemLogs.Add(new SystemLog
+            {
+                ActionType = "REGISTER",
+                Username = student.Username,
+                Details = $"Yeni öğrenci hesabı oluşturuldu ({student.FullName} - {student.StudentNumber})."
+            });
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new { success = true, message = "Hesabınız başarıyla oluşturuldu! Şimdi giriş yapabilirsiniz." });
+        }
+
         [HttpPost("logout")]
         [Authorize]
         public async Task<IActionResult> Logout()

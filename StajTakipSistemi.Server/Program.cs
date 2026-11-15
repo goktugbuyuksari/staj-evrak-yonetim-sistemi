@@ -32,6 +32,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 // 2. Servis Kayıtları (Dependency Injection)
 builder.Services.AddScoped<IHolidayService, HolidayService>();
+builder.Services.AddScoped<IDocumentTextExtractor, DocumentTextExtractor>();
 builder.Services.AddScoped<IDocumentValidationEngine, DocumentValidationEngine>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IDatasetImportService, DatasetImportService>();
