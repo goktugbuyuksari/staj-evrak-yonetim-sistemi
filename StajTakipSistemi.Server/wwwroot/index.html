@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Staj Evrak Doğrulama ve Yönetim Sistemi - ProLab III</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Vue 3 -->
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    .status-badge { font-weight: 600; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.05em; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen">
+  <div id="app" v-cloak>
+    
+    <!-- Üst Başlık (Header / Navbar) -->
+    <header class="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white shadow-lg sticky top-0 z-40">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap justify-between items-center gap-4">
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 rounded-xl bg-blue-500/20 border border-blue-400/30 flex items-center justify-center text-blue-300 text-xl font-bold">
+            <i class="fa-solid fa-file-shield"></i>
+          </div>
+          <div>
+            <h1 class="text-lg font-bold tracking-tight">Staj Evrak Doğrulama ve Yönetim Sistemi</h1>
+            <p class="text-xs text-blue-200">Programlama Laboratuvarı III • Ek-16 Otomatik Denetim Platformu</p>
+          </div>
+        </div>
+
+        <!-- Oturum Bilgisi / Çıkış Butonu -->
+        <div v-if="currentUser" class="flex items-center space-x-4">
+          <div class="text-right hidden sm:block">
+            <div class="text-sm font-semibold flex items-center justify-end gap-1.5">
+              <span>{{ currentUser.fullName }}</span>
+              <span :class="currentUser.role === 'ROLE_ADMIN' ? 'bg-amber-500/20 text-amber-300 border-amber-400/30' : 'bg-emerald-500/20 text-emerald-300 border-emerald-400/30'" class="text-[10px] uppercase font-bold px-2 py-0.5 rounded border">
+                {{ currentUser.role === 'ROLE_ADMIN' ? 'YÖNETİCİ' : 'ÖĞRENCİ' }}
+              </span>
+            </div>
+            <div class="text-xs text-slate-300">{{ currentUser.email }}</div>
+          </div>
+          <button @click="logout" class="bg-red-500/20 hover:bg-red-600/30 text-red-200 border border-red-400/30 px-3 py-1.5 rounded-lg text-sm transition flex items-center gap-1.5">
+            <i class="fa-solid fa-arrow-right-from-bracket"></i>
+            <span class="hidden md:inline">Güvenli Çıkış</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- ANA İÇERİK BÖLÜMÜ -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+
+      <!-- ================= 1. GİRİŞ EKRANI (LOGIN) ================= -->
+      <div v-if="!currentUser" class="max-w-md mx-auto my-12">
+        <div class="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
+          <div class="p-6 bg-gradient-to-br from-blue-700 to-indigo-800 text-white text-center">
+            <div class="w-14 h-14 mx-auto rounded-full bg-white/10 flex items-center justify-center text-2xl mb-3">
+              <i class="fa-solid fa-user-lock"></i>
+            </div>
+            <h2 class="text-xl font-bold">Sistem Girişi</h2>
+            <p class="text-xs text-blue-200 mt-1">Staj Evrak Yönetim Sistemine Giriş Yapınız</p>
+          </div>
+
+          <div class="p-6 space-y-4">
+            <!-- Hızlı Doldurma Butonları (Vize Sunumu Kolaylığı) -->
+            <div class="bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs text-slate-600">
+              <div class="font-semibold text-slate-700 mb-2 flex items-center gap-1">
+                <i class="fa-solid fa-bolt text-amber-500"></i> Hızlı Test Girişi (Tek Tıkla):
+              </div>
+              <div class="grid grid-cols-2 gap-2">
+                <button @click="fillLogin('ogrenci', 'Ogrenci123!')" class="bg-white hover:bg-blue-50 border border-blue-200 text-blue-700 font-medium py-1.5 px-2 rounded text-left flex items-center gap-1.5">
+                  <i class="fa-solid fa-graduation-cap"></i> Öğrenci Girişi
+                </button>
+                <button @click="fillLogin('admin', 'Admin123!')" class="bg-white hover:bg-indigo-50 border border-indigo-200 text-indigo-700 font-medium py-1.5 px-2 rounded text-left flex items-center gap-1.5">
+                  <i class="fa-solid fa-shield-halved"></i> Admin Girişi
+                </button>
+              </div>
+            </div>
+
+            <!-- Hata / Kilit Bildirimi -->
+            <div v-if="loginError" class="p-3 bg-red-50 border-l-4 border-red-500 text-red-700 text-xs rounded">
+              <div class="font-bold flex items-center gap-1">
+                <i class="fa-solid fa-triangle-exclamation"></i> Giriş Başarısız
+              </div>
+              <p class="mt-1">{{ loginError }}</p>
+            </div>
+
+            <form @submit.prevent="login" class="space-y-4">
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Kullanıcı Adı veya E-posta</label>
+                <div class="relative">
+                  <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                    <i class="fa-regular fa-user"></i>
+                  </span>
+                  <input v-model="loginForm.username" type="text" required class="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="Örn: ogrenci veya admin">
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-semibold text-slate-700 mb-1">Şifre</label>
+                <div class="relative">
+                  <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                    <i class="fa-solid fa-lock"></i>
+                  </span>
+                  <input v-model="loginForm.password" type="password" required class="w-full pl-9 pr-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" placeholder="••••••••">
+                </div>
+              </div>
+
+              <div class="text-[11px] text-slate-500 flex items-center gap-1 bg-amber-50 p-2 rounded border border-amber-200">
+                <i class="fa-solid fa-shield text-amber-600"></i>
+                <span>Güvenlik Kuralı (Doküman 4.1): 5 hatalı denemede sistem hesabı kilitler.</span>
+              </div>
+
+              <button type="submit" :disabled="loading" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg text-sm shadow transition flex items-center justify-center gap-2">
+                <i v-if="loading" class="fa-solid fa-circle-notch fa-spin"></i>
+                <span v-else>Giriş Yap</span>
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- ================= 2. ÖĞRENCİ PANELİ ================= -->
+      <div v-else-if="currentUser.role === 'ROLE_STUDENT'" class="space-y-6">
+
+        <!-- Öğrenci Karşılama ve Profil Kartı -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 flex flex-wrap justify-between items-center gap-4">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm">
+                <i class="fa-solid fa-graduation-cap"></i>
+              </span>
+              <h2 class="text-xl font-bold text-slate-800">Hoş Geldiniz, {{ currentUser.fullName }}</h2>
+            </div>
+            <p class="text-xs text-slate-500 mt-1">
+              Öğrenci No: <strong class="text-slate-700">{{ currentUser.studentNumber }}</strong> • 
+              Bölüm: <strong class="text-slate-700">{{ currentUser.department }}</strong> • 
+              TC: <strong class="text-slate-700">{{ currentUser.tcNo }}</strong> • 
+              Uyruk: <strong class="text-slate-700">{{ currentUser.nationality }}</strong>
+            </p>
+          </div>
+
+          <div class="flex items-center gap-3">
+            <button @click="showUploadModal = true" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-4 py-2 rounded-xl text-sm shadow-sm transition flex items-center gap-2">
+              <i class="fa-solid fa-cloud-arrow-up"></i>
+              <span>Evrak Yükle (Ek-16)</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Google Form URL Girişi ve Doğrulama Kutusu (Doküman Bölüm 4.6 & 3) -->
+        <div class="bg-gradient-to-r from-indigo-50 to-blue-50 border border-blue-200 rounded-2xl p-4 shadow-sm">
+          <div class="flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-2.5">
+              <div class="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center text-lg">
+                <i class="fa-brands fa-google"></i>
+              </div>
+              <div>
+                <h3 class="text-sm font-bold text-slate-800">Staj Evrağı Teslim Google Form URL'si</h3>
+                <p class="text-xs text-slate-600">Doküman 4.6 Kuralı: Belge 'Tamamlandı' olduğunda bilgiler Google Form'a kaydedilir.</p>
+              </div>
+            </div>
+            <div class="flex-1 max-w-lg flex items-center gap-2">
+              <input v-model="googleFormUrlInput" type="text" placeholder="https://docs.google.com/forms/d/e/... veya https://forms.gle/..." class="flex-1 text-xs border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+              <button @click="verifyGoogleFormUrl(googleFormUrlInput)" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition whitespace-nowrap">
+                <i class="fa-solid fa-check-double mr-1"></i> URL'yi Doğrula
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Belgelerim Listesi -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+          <div class="p-4 border-b border-slate-200 flex justify-between items-center">
+            <h3 class="font-bold text-slate-800 text-base flex items-center gap-2">
+              <i class="fa-solid fa-folder-open text-blue-600"></i>
+              <span>Yüklenen Ek-16 Staj Belgelerim</span>
+            </h3>
+            <span class="text-xs bg-slate-100 text-slate-700 px-2.5 py-1 rounded-full font-medium">Toplam {{ documents.length }} Evrak</span>
+          </div>
+
+          <div v-if="documents.length === 0" class="p-12 text-center text-slate-400">
+            <div class="text-4xl mb-3"><i class="fa-regular fa-file-lines"></i></div>
+            <p class="text-sm font-medium">Henüz bir Ek-16 staj belgesi yüklemediniz.</p>
+            <p class="text-xs text-slate-400 mt-1">Yukarıdaki "Evrak Yükle" butonuna tıklayarak ilk belgenizi yükleyebilir ve otomatik denetimi başlatabilirsiniz.</p>
+          </div>
+
+          <div v-else class="divide-y divide-slate-100">
+            <div v-for="doc in documents" :key="doc.id" class="p-4 hover:bg-slate-50 transition flex flex-wrap justify-between items-center gap-4">
+              <div class="flex items-start gap-3">
+                <div class="w-10 h-10 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-600 text-lg">
+                  <i :class="getFileIcon(doc.fileExtension)"></i>
+                </div>
+                <div>
+                  <div class="flex items-center gap-2">
+                    <span class="font-bold text-slate-800 text-sm">{{ doc.fileName }}</span>
+                    <span :class="getStatusBadgeClass(doc.status)" class="status-badge px-2 py-0.5 rounded-full text-[10px]">
+                      {{ doc.status }}
+                    </span>
+                    <span v-if="doc.status === 'Tamamlandı'" class="text-xs text-emerald-600 font-semibold flex items-center gap-1" title="Tamamlanan evrak değiştirilemez ve silinemez">
+                      <i class="fa-solid fa-lock"></i> Kilitli
+                    </span>
+                  </div>
+                  <div class="text-xs text-slate-500 mt-1 space-x-2">
+                    <span>Kurum: <strong class="text-slate-700">{{ doc.companyName }}</strong></span>
+                    <span>•</span>
+                    <span>Tarih: <strong class="text-slate-700">{{ formatDate(doc.startDate) }} - {{ formatDate(doc.endDate) }}</strong> ({{ doc.declaredDaysCount }} Gün)</span>
+                    <span>•</span>
+                    <span>Öğretim Yılı: <strong class="text-slate-700">{{ doc.academicYear }}</strong></span>
+                  </div>
+                  <!-- Statü Akışı Görseli (Doküman Bölüm 5) -->
+                  <div class="mt-2 flex items-center text-[10px] text-slate-400 gap-1.5 flex-wrap">
+                    <span class="font-medium text-slate-600">Statü Akışı:</span>
+                    <span :class="doc.status === 'Yüklendi' ? 'font-bold text-blue-600 underline' : ''">Yüklendi</span>
+                    <span>→</span>
+                    <span :class="doc.status === 'İnceleniyor' ? 'font-bold text-indigo-600 underline' : ''">İnceleniyor</span>
+                    <span>→</span>
+                    <span :class="doc.status === 'Hatalı / Eksik' ? 'font-bold text-red-600 underline' : ''">Hatalı / Eksik</span>
+                    <span>→</span>
+                    <span :class="doc.status === 'Onaylandı' ? 'font-bold text-emerald-600 underline' : ''">Onaylandı</span>
+                    <span>→</span>
+                    <span :class="doc.status === 'Tamamlandı' ? 'font-bold text-purple-700 underline' : ''">Tamamlandı</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- İşlem Butonları -->
+              <div class="flex items-center gap-2">
+                <button @click="viewReport(doc)" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1">
+                  <i class="fa-solid fa-clipboard-check"></i> Denetim Raporu
+                </button>
+                <button v-if="doc.status !== 'Tamamlandı'" @click="deleteDocument(doc.id)" class="bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition" title="Sil">
+                  <i class="fa-regular fa-trash-can"></i>
+                </button>
+                <span v-else class="text-[11px] text-slate-400 italic px-2 py-1 bg-slate-100 rounded">
+                  <i class="fa-solid fa-lock"></i> Korumalı
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- ================= 3. ADMİN PANELİ ================= -->
+      <div v-else-if="currentUser.role === 'ROLE_ADMIN'" class="space-y-6">
+
+        <!-- Admin Başlık ve İstatistikler -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 flex flex-wrap justify-between items-center gap-4">
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-sm">
+                <i class="fa-solid fa-shield-halved"></i>
+              </span>
+              <h2 class="text-xl font-bold text-slate-800">Staj Komisyonu Yönetici Paneli</h2>
+            </div>
+            <p class="text-xs text-slate-500 mt-1">{{ currentUser.fullName }} • {{ currentUser.departmentTitle }}</p>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <span class="text-xs bg-slate-100 text-slate-600 px-3 py-1.5 rounded-lg font-medium">
+              Aktif Oturum: <strong>ROLE_ADMIN</strong> (403 Yetki Korumalı)
+            </span>
+          </div>
+        </div>
+
+        <!-- Admin Sekmeleri (Tabs) -->
+        <div class="flex border-b border-slate-200 space-x-2 text-sm font-semibold">
+          <button @click="adminTab = 'documents'" :class="adminTab === 'documents' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-slate-500 hover:text-slate-800'" class="pb-3 px-3 transition flex items-center gap-2">
+            <i class="fa-solid fa-list-check"></i> Tüm Başvurular
+            <span class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">{{ adminDocuments.length }}</span>
+          </button>
+          <button @click="adminTab = 'completed'" :class="adminTab === 'completed' ? 'border-b-2 border-emerald-600 text-emerald-600' : 'text-slate-500 hover:text-slate-800'" class="pb-3 px-3 transition flex items-center gap-2">
+            <i class="fa-solid fa-circle-check"></i> Tamamlanan Belgeler Sekmesi
+            <span class="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">{{ completedDocuments.length }}</span>
+          </button>
+          <button @click="adminTab = 'dataset'" :class="adminTab === 'dataset' ? 'border-b-2 border-indigo-600 text-indigo-600' : 'text-slate-500 hover:text-slate-800'" class="pb-3 px-3 transition flex items-center gap-2">
+            <i class="fa-solid fa-database"></i> Test Veri Seti Yönetimi (CSV)
+            <span class="text-xs bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full">{{ datasetRecords.length }}</span>
+          </button>
+          <button @click="adminTab = 'logs'" :class="adminTab === 'logs' ? 'border-b-2 border-amber-600 text-amber-600' : 'text-slate-500 hover:text-slate-800'" class="pb-3 px-3 transition flex items-center gap-2">
+            <i class="fa-solid fa-shield-virus"></i> Güvenlik & Kilitli Hesaplar
+            <span v-if="adminLogs.lockedUsers && adminLogs.lockedUsers.length > 0" class="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full">{{ adminLogs.lockedUsers.length }}</span>
+          </button>
+        </div>
+
+        <!-- SEKME 1: TÜM BAŞVURULAR -->
+        <div v-if="adminTab === 'documents'" class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+          <div class="p-4 border-b border-slate-200 flex flex-wrap justify-between items-center gap-3">
+            <div class="flex items-center gap-2">
+              <input v-model="adminSearch" @input="filterAdminDocs" type="text" placeholder="Öğrenci Adı, No veya Kurum Ara..." class="text-xs border border-slate-300 rounded-lg px-3 py-2 w-64 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+              <select v-model="adminStatusFilter" @change="filterAdminDocs" class="text-xs border border-slate-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                <option value="">Tüm Statüler</option>
+                <option value="Yüklendi">Yüklendi</option>
+                <option value="İnceleniyor">İnceleniyor</option>
+                <option value="Hatalı / Eksik">Hatalı / Eksik</option>
+                <option value="Onaylandı">Onaylandı</option>
+                <option value="Tamamlandı">Tamamlandı</option>
+              </select>
+            </div>
+            <button @click="loadAdminDocuments" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-2 rounded-lg font-medium transition">
+              <i class="fa-solid fa-arrows-rotate mr-1"></i> Yenile
+            </button>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs text-slate-700">
+              <thead class="bg-slate-50 text-slate-500 uppercase border-b border-slate-200">
+                <tr>
+                  <th class="py-3 px-4">Öğrenci</th>
+                  <th class="py-3 px-4">TC / No</th>
+                  <th class="py-3 px-4">Kurum / Firma</th>
+                  <th class="py-3 px-4">Tarih & Gün</th>
+                  <th class="py-3 px-4">Statü</th>
+                  <th class="py-3 px-4 text-right">İşlemler</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100">
+                <tr v-for="d in filteredAdminDocs" :key="d.id" class="hover:bg-slate-50 transition">
+                  <td class="py-3 px-4 font-semibold text-slate-800">{{ d.studentFullName }}</td>
+                  <td class="py-3 px-4">{{ d.studentTcNo }}<br><span class="text-slate-400">{{ d.studentNumber }}</span></td>
+                  <td class="py-3 px-4">{{ d.companyName }}<br><span class="text-slate-400">{{ d.engineerCount }} Mühendis</span></td>
+                  <td class="py-3 px-4">{{ formatDate(d.startDate) }} - {{ formatDate(d.endDate) }}<br><span class="text-slate-400">{{ d.declaredDaysCount }} gün</span></td>
+                  <td class="py-3 px-4">
+                    <span :class="getStatusBadgeClass(d.status)" class="status-badge px-2 py-0.5 rounded-full">
+                      {{ d.status }}
+                    </span>
+                  </td>
+                  <td class="py-3 px-4 text-right space-x-1">
+                    <button @click="viewReport(d)" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-2 py-1 rounded text-[11px] font-semibold">
+                      Rapor
+                    </button>
+                    <!-- Admin statü override -->
+                    <button @click="changeStatusAdmin(d.id, 'Tamamlandı')" class="bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-2 py-1 rounded text-[11px] font-semibold" title="Tamamlandı Yap">
+                      <i class="fa-solid fa-check"></i>
+                    </button>
+                    <button @click="deleteAdminDoc(d.id)" class="bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 px-2 py-1 rounded text-[11px] font-semibold" title="Sil">
+                      <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- SEKME 2: TAMAMLANAN BELGELER SEKMESİ (Doküman Bölüm 4.2 & 4.7) -->
+        <div v-if="adminTab === 'completed'" class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+          <div class="p-4 border-b border-slate-200 bg-emerald-50/50 flex justify-between items-center">
+            <div>
+              <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+                <i class="fa-solid fa-certificate text-emerald-600"></i>
+                <span>Tamamlanan Başvurular Sekmesi (Doküman 4.2 Kuralı)</span>
+              </h3>
+              <p class="text-xs text-slate-500 mt-0.5">Tamamlanan başvurular ayrı sekmede listelenir; öğrenciler tarafından güncellenemez. Yönetici bu başvurulardan Ek-17 üretebilir.</p>
+            </div>
+            <button @click="generateEk17Demo" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition shadow-sm flex items-center gap-1.5">
+              <i class="fa-solid fa-file-contract"></i>
+              <span>Ek-17 Belgesi Oluştur (Önizleme)</span>
+            </button>
+          </div>
+
+          <div v-if="completedDocuments.length === 0" class="p-12 text-center text-slate-400">
+            <i class="fa-regular fa-folder-closed text-3xl mb-2"></i>
+            <p class="text-sm">Henüz "Tamamlandı" statüsüne geçmiş başvuru bulunmamaktadır.</p>
+          </div>
+
+          <div v-else class="overflow-x-auto">
+            <table class="w-full text-left text-xs text-slate-700">
+              <thead class="bg-slate-50 text-slate-500 uppercase border-b border-slate-200">
+                <tr>
+                  <th class="py-3 px-4">Öğrenci</th>
+                  <th class="py-3 px-4">Öğrenci No / TC</th>
+                  <th class="py-3 px-4">Staj Yapılan Kurum</th>
+                  <th class="py-3 px-4">Tarih Aralığı</th>
+                  <th class="py-3 px-4">Google Form Durumu</th>
+                  <th class="py-3 px-4 text-right">Yönetici İşlemleri</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100">
+                <tr v-for="d in completedDocuments" :key="d.id" class="hover:bg-slate-50 transition">
+                  <td class="py-3 px-4 font-bold text-slate-800">{{ d.studentFullName }}</td>
+                  <td class="py-3 px-4">{{ d.studentNumber }}<br><span class="text-slate-400">{{ d.studentTcNo }}</span></td>
+                  <td class="py-3 px-4 font-medium">{{ d.companyName }}</td>
+                  <td class="py-3 px-4">{{ formatDate(d.startDate) }} - {{ formatDate(d.endDate) }} ({{ d.declaredDaysCount }} gün)</td>
+                  <td class="py-3 px-4">
+                    <span v-if="d.googleFormUrl" class="text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded font-semibold text-[10px]">
+                      <i class="fa-solid fa-cloud-arrow-up mr-1"></i> Form Bağlı
+                    </span>
+                    <span v-else class="text-slate-400 text-[10px]">Form URL Yok</span>
+                  </td>
+                  <td class="py-3 px-4 text-right space-x-1">
+                    <button @click="viewReport(d)" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-2 py-1 rounded text-[11px] font-semibold">
+                      Rapor
+                    </button>
+                    <!-- Yalnızca Admin güncelleyebilir ve silebilir (Doküman 5) -->
+                    <button @click="changeStatusAdmin(d.id, 'Hatalı / Eksik')" class="bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 px-2 py-1 rounded text-[11px] font-semibold" title="Revizeye Geri Döndür">
+                      Revize Et
+                    </button>
+                    <button @click="deleteAdminDoc(d.id)" class="bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 px-2 py-1 rounded text-[11px] font-semibold" title="Yönetici Sil">
+                      <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- SEKME 3: TEST VERİ SETİ YÖNETİMİ (Doküman Bölüm 4.3) -->
+        <div v-if="adminTab === 'dataset'" class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+          <div class="p-5 border-b border-slate-200 bg-slate-50/70">
+            <div class="flex flex-wrap justify-between items-center gap-4">
+              <div>
+                <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+                  <i class="fa-solid fa-file-csv text-emerald-600 text-lg"></i>
+                  <span>Test Veri Seti İçe Aktarma (CSV Formatı)</span>
+                </h3>
+                <p class="text-xs text-slate-500 mt-1">
+                  Doküman Bölüm 4.3 Sütunları: Öğrenci ad soyad, TC kimlik no, uyruk, öğrenci no, doğum tarihi, ikametgâh adresi, okuduğu bölüm, teslim yılı, yapılan staj günü, e-posta, telefon, sağlık yardımı statüsü.
+                </p>
+              </div>
+
+              <div class="flex items-center gap-2">
+                <a href="/api/admin/dataset/sample" class="bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-semibold px-3 py-2 rounded-lg transition flex items-center gap-1.5 shadow-sm">
+                  <i class="fa-solid fa-download"></i> Örnek CSV İndir
+                </a>
+                <label class="bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition shadow-sm cursor-pointer flex items-center gap-1.5">
+                  <i class="fa-solid fa-upload"></i> CSV Dosyası Yükle
+                  <input type="file" accept=".csv" @change="uploadDatasetFile" class="hidden">
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Yüklenen Öğrenci Listesi Tablosu -->
+          <div class="p-4">
+            <div class="mb-3 flex justify-between items-center">
+              <span class="text-xs font-semibold text-slate-600">Sistemde Kayıtlı Öğrenci Veri Seti ({{ datasetRecords.length }} Kayıt)</span>
+              <input v-model="datasetSearch" type="text" placeholder="Ad, TC veya No ile Ara..." class="text-xs border border-slate-300 rounded-lg px-3 py-1.5 w-64 focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            </div>
+
+            <div class="overflow-x-auto border border-slate-200 rounded-xl">
+              <table class="w-full text-left text-xs text-slate-700">
+                <thead class="bg-slate-100 text-slate-600 uppercase border-b border-slate-200">
+                  <tr>
+                    <th class="py-2.5 px-3">Ad Soyad</th>
+                    <th class="py-2.5 px-3">TC No</th>
+                    <th class="py-2.5 px-3">Uyruk</th>
+                    <th class="py-2.5 px-3">Öğrenci No</th>
+                    <th class="py-2.5 px-3">Bölüm</th>
+                    <th class="py-2.5 px-3">Önceki Staj</th>
+                    <th class="py-2.5 px-3">E-posta / Telefon</th>
+                    <th class="py-2.5 px-3">Sağlık Yardımı</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                  <tr v-for="r in filteredDataset" :key="r.id" class="hover:bg-slate-50 transition">
+                    <td class="py-2.5 px-3 font-semibold text-slate-800">{{ r.fullName }}</td>
+                    <td class="py-2.5 px-3">{{ r.tcNo }}</td>
+                    <td class="py-2.5 px-3"><span :class="r.nationality === 'TC' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-800'" class="px-1.5 py-0.5 rounded text-[10px] font-bold">{{ r.nationality }}</span></td>
+                    <td class="py-2.5 px-3 font-mono">{{ r.studentNumber }}</td>
+                    <td class="py-2.5 px-3">{{ r.department }}</td>
+                    <td class="py-2.5 px-3">{{ r.completedInternshipDays }} gün</td>
+                    <td class="py-2.5 px-3">{{ r.email }}<br><span class="text-slate-400">{{ r.phoneNumber }}</span></td>
+                    <td class="py-2.5 px-3">{{ r.healthInsuranceStatus }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- SEKME 4: GÜVENLİK VE KİLİTLİ HESAPLAR LOGLARI -->
+        <div v-if="adminTab === 'logs'" class="space-y-6">
+          <!-- Kilitli Kullanıcılar Kartı (5 Hatalı Giriş) -->
+          <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="p-4 border-b border-slate-200 bg-red-50/60 flex justify-between items-center">
+              <h3 class="font-bold text-red-800 text-sm flex items-center gap-2">
+                <i class="fa-solid fa-user-slash text-red-600"></i>
+                <span>5 Hatalı Giriş Denemesi ile Kilitlenen Hesaplar</span>
+              </h3>
+              <span class="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-bold">
+                {{ adminLogs.lockedUsers ? adminLogs.lockedUsers.length : 0 }} Kilitli Hesap
+              </span>
+            </div>
+
+            <div v-if="!adminLogs.lockedUsers || adminLogs.lockedUsers.length === 0" class="p-6 text-center text-slate-400 text-xs">
+              Şu anda kilitlenmiş bir kullanıcı hesabı bulunmamaktadır.
+            </div>
+            <div v-else class="divide-y divide-slate-100">
+              <div v-for="u in adminLogs.lockedUsers" :key="u.id" class="p-3 flex justify-between items-center text-xs">
+                <div>
+                  <span class="font-bold text-slate-800">{{ u.fullName }}</span> ({{ u.username }} / {{ u.email }})
+                  <div class="text-[11px] text-red-600 mt-0.5">5 hatalı şifre denemesi yapıldı. Sistem tarafından kilitlendi.</div>
+                </div>
+                <button @click="unlockUser(u.id)" class="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold px-3 py-1.5 rounded-lg text-xs transition flex items-center gap-1">
+                  <i class="fa-solid fa-lock-open"></i> Kilidi Aç
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Başarısız Giriş Deneme Kayıtları -->
+          <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="p-4 border-b border-slate-200 flex justify-between items-center">
+              <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+                <i class="fa-solid fa-shield text-amber-500"></i>
+                <span>Son Başarısız Giriş Denemeleri (Güvenlik Logları)</span>
+              </h3>
+            </div>
+            <div class="max-h-60 overflow-y-auto divide-y divide-slate-100 text-xs">
+              <div v-for="log in adminLogs.failedLogins" :key="log.id" class="p-3 flex justify-between items-center hover:bg-slate-50">
+                <div>
+                  <span class="font-semibold text-slate-800">Hedef Kullanıcı: {{ log.usernameAttempted }}</span>
+                  <span class="text-slate-400 ml-2">IP: {{ log.ipAddress }}</span>
+                  <div class="text-[11px] text-slate-500">{{ log.reason }}</div>
+                </div>
+                <div class="text-right">
+                  <span v-if="log.triggeredLockout" class="bg-red-100 text-red-700 px-2 py-0.5 rounded text-[10px] font-bold">KİLİTLENDİ</span>
+                  <div class="text-[10px] text-slate-400 mt-1">{{ formatDate(log.attemptTime) }}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </main>
+
+    <!-- ================= MODAL 1: EVRAK YÜKLEME VE KURAL MOTORU FORMU ================= -->
+    <div v-if="showUploadModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+      <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[90vh] flex flex-col overflow-hidden">
+        
+        <!-- Modal Başlık -->
+        <div class="p-4 bg-gradient-to-r from-blue-700 to-indigo-800 text-white flex justify-between items-center">
+          <div class="flex items-center gap-2">
+            <i class="fa-solid fa-file-circle-plus text-xl text-blue-200"></i>
+            <div>
+              <h3 class="font-bold text-base">Ek-16 Staj Belgesi Yükleme ve Doğrulama</h3>
+              <p class="text-xs text-blue-200">Word, PDF, JPEG veya PNG formatında yükleyiniz</p>
+            </div>
+          </div>
+          <button @click="showUploadModal = false" class="text-white/80 hover:text-white text-xl">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <!-- Modal İçerik (Form) -->
+        <form @submit.prevent="submitUpload" class="p-6 overflow-y-auto space-y-6 flex-1 text-xs">
+          
+          <!-- Dosya Seçimi (Doküman 4.4) -->
+          <div class="bg-slate-50 p-4 rounded-xl border border-dashed border-slate-300">
+            <label class="block font-bold text-slate-700 mb-1 text-sm">
+              <i class="fa-solid fa-paperclip mr-1 text-blue-600"></i> Belge Dosyası Seçiniz (.pdf, .doc, .docx, .jpg, .png)
+            </label>
+            <input type="file" @change="onFileSelected" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" class="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-blue-600 file:text-white hover:file:bg-blue-700">
+            <p v-if="fileValidationError" class="mt-2 text-red-600 font-semibold flex items-center gap-1">
+              <i class="fa-solid fa-circle-exclamation"></i> {{ fileValidationError }}
+            </p>
+            <p class="text-[11px] text-slate-400 mt-1">Kabul edilen dosya formatları: Word (.doc/.docx), PDF, JPEG, PNG. Diğer formatlar reddedilir.</p>
+          </div>
+
+          <!-- Öğrenci Kimlik ve İletişim Bilgileri (Doküman 6.1 & 6.2) -->
+          <div>
+            <h4 class="font-bold text-slate-800 text-sm border-b pb-1 mb-3 flex items-center gap-1.5 text-blue-700">
+              <i class="fa-solid fa-user"></i> 1. Öğrenci Kimlik ve İletişim Bilgileri
+            </h4>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div>
+                <label class="font-semibold text-slate-700">Ad Soyad *</label>
+                <input v-model="uploadForm.studentFullName" type="text" required class="w-full mt-1 p-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+              </div>
+              <div>
+                <label class="font-semibold text-slate-700">Uyruk *</label>
+                <select v-model="uploadForm.nationality" class="w-full mt-1 p-2 border rounded-lg focus:ring-2 focus:ring-blue-500">
+                  <option value="TC">T.C. Vatandaşı (11 Hane Algoritma)</option>
+                  <option value="Yabancı">Yabancı Uyruklu (99 ile Başlayan 11 Hane)</option>
+                </select>
+              </div>
+              <div>
+                <label class="font-semibold text-slate-700">TC / Yabancı Kimlik No *</label>
+                <input v-model="uploadForm.studentTcNo" type="text" maxlength="11" required class="w-full mt-1 p-2 border rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="11 haneli kimlik no">
+              </div>
+              <div>
+                <label class="font-semibold text-slate-700">Öğrenci Numarası *</label>
+                <input v-model="uploadForm.studentNumber" type="text" required class="w-full mt-1 p-2 border rounded-lg">
+              </div>
+              <div>
+                <label class="font-semibold text-slate-700">Telefon (+90 xxx xxx xx xx) *</label>
+                <input v-model="uploadForm.phoneNumber" type="text" required class="w-full mt-1 p-2 border rounded-lg" placeholder="+90 532 111 22 33">
+              </div>
+              <div>
+                <label class="font-semibold text-slate-700">E-posta *</label>
+                <input v-model="uploadForm.email" type="email" required class="w-full mt-1 p-2 border rounded-lg" placeholder="ogrenci@ogr.kocaeli.edu.tr">
+              </div>
+              <div class="md:col-span-2">
+                <label class="font-semibold text-slate-700">İkametgâh Adresi (Mahalle, Cadde/Sokak, Bina No, Daire No, İlçe/İl) *</label>
+                <input v-model="uploadForm.address" type="text" required class="w-full mt-1 p-2 border rounded-lg" placeholder="Atatürk Mah. Cumhuriyet Cad. No: 12 Daire: 4 İzmit / Kocaeli">
+              </div>
+              <div>
+                <label class="font-semibold text-slate-700">Faks Numarası (İsteğe Bağlı - Nullable)</label>
+                <input v-model="uploadForm.faxNumber" type="text" class="w-full mt-1 p-2 border rounded-lg" placeholder="Boş bırakılabilir">
+              </div>
+            </div>
+          </div>
+
+          <!-- Staj ve Tarih Bilgileri (Doküman 6.3 - 30 Gün ve Tatil Hesabı) -->
+          <div>
+            <h4 class="font-bold text-slate-800 text-sm border-b pb-1 mb-3 flex items-center gap-1.5 text-blue-700">
+              <i class="fa-regular fa-calendar-days"></i> 2. Mantık, Tarih ve Staj Günleri (Kısıt 6.3)
+            </h4>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div>
+                <label class="font-semibold text-slate-700">Öğretim Yılı / Dönem (Ardışık Yıl) *</label>
+                <input v-model="uploadForm.academicYear" type="text" required class="w-full mt-1 p-2 border rounded-lg" placeholder="2025-2026 Bahar">
+              </div>
+              <div>
+                <label class="font-semibold text-slate-700">Belge Teslim Tarihi *</label>
+                <input v-model="uploadForm.submissionDate" type="date" required class="w-full mt-1 p-2 border rounded-lg">
+              </div>
+              <div>
+                <label class="font-semibold text-slate-700">Staj Başlangıç Tarihi *</label>
+                <input v-model="uploadForm.startDate" @change="calculateDateHelper" type="date" required class="w-full mt-1 p-2 border rounded-lg">
+              </div>
+              <div>
+                <label class="font-semibold text-slate-700">Staj Bitiş Tarihi *</label>
+                <input v-model="uploadForm.endDate" @change="calculateDateHelper" type="date" required class="w-full mt-1 p-2 border rounded-lg">
+              </div>
+              <div>
+                <label class="font-semibold text-slate-700">Belgede Beyan Edilen Gün Sayısı *</label>
+                <input v-model.number="uploadForm.declaredDaysCount" type="number" min="1" max="90" required class="w-full mt-1 p-2 border rounded-lg">
+              </div>
+              <div>
+                <label class="font-semibold text-slate-700">30 Gün Kuralı Durumu</label>
+                <div class="mt-1 p-2 rounded-lg text-[11px] font-medium" :class="submissionDaysDiff >= 30 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'">
+                  <span v-if="submissionDaysDiff >= 30">
+                    <i class="fa-solid fa-check mr-1"></i> Uygun ({{ submissionDaysDiff }} gün önce)
+                  </span>
+                  <span v-else>
+                    <i class="fa-solid fa-triangle-exclamation mr-1"></i> Uygun Değil! (Önerilen: {{ suggestedSubDate }})
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Haftalık Staj Günleri Seçimi (Pzt-Cts) -->
+            <div class="mt-3 bg-slate-50 p-3 rounded-xl border border-slate-200">
+              <label class="font-semibold text-slate-700 block mb-1.5">
+                Staj Yapılacak Haftalık Günler (Resmi Tatiller Hesaptan Çıkarılacaktır):
+              </label>
+              <div class="flex flex-wrap gap-4 text-xs">
+                <label class="flex items-center gap-1.5 cursor-pointer">
+                  <input type="checkbox" value="Pazartesi" v-model="selectedDaysArray"> Pazartesi
+                </label>
+                <label class="flex items-center gap-1.5 cursor-pointer">
+                  <input type="checkbox" value="Salı" v-model="selectedDaysArray"> Salı
+                </label>
+                <label class="flex items-center gap-1.5 cursor-pointer">
+                  <input type="checkbox" value="Çarşamba" v-model="selectedDaysArray"> Çarşamba
+                </label>
+                <label class="flex items-center gap-1.5 cursor-pointer">
+                  <input type="checkbox" value="Perşembe" v-model="selectedDaysArray"> Perşembe
+                </label>
+                <label class="flex items-center gap-1.5 cursor-pointer">
+                  <input type="checkbox" value="Cuma" v-model="selectedDaysArray"> Cuma
+                </label>
+                <label class="flex items-center gap-1.5 cursor-pointer">
+                  <input type="checkbox" value="Cumartesi" v-model="selectedDaysArray"> Cumartesi
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- İşveren ve Mühendis Sayısı Kuralı (Doküman 6.4 & 6.5) -->
+          <div>
+            <h4 class="font-bold text-slate-800 text-sm border-b pb-1 mb-3 flex items-center gap-1.5 text-blue-700">
+              <i class="fa-solid fa-building"></i> 3. İşveren Bilgileri ve Mühendis Kuralı (Kısıt 6.4 & 6.5)
+            </h4>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div>
+                <label class="font-semibold text-slate-700">Kurum / Firma Adı *</label>
+                <input v-model="uploadForm.companyName" type="text" required class="w-full mt-1 p-2 border rounded-lg" placeholder="Örn: Aselsan, Havelsan, SoftTech A.Ş.">
+              </div>
+              <div>
+                <label class="font-semibold text-slate-700">Kurumdaki Mühendis Sayısı *</label>
+                <input v-model.number="uploadForm.engineerCount" type="number" min="0" required class="w-full mt-1 p-2 border rounded-lg">
+              </div>
+            </div>
+
+            <!-- Mühendis Sayısı < 5 ise Dinamik Uyarı Kutucuğu (Doküman 6.5) -->
+            <div v-if="uploadForm.engineerCount > 0 && uploadForm.engineerCount < 5" class="mt-3 p-3 bg-amber-50 border border-amber-300 rounded-xl">
+              <div class="font-bold text-amber-800 flex items-center gap-1.5">
+                <i class="fa-solid fa-circle-question text-amber-600"></i>
+                <span>Mühendis Sayısı Kuralı (Bölüm 6.5): Kurumdaki mühendis sayısı 5'in altındadır!</span>
+              </div>
+              <p class="text-[11px] text-amber-700 mt-1 mb-2">
+                Kural gereği: Mühendis sayısı 5'in altında ise, mühendisin mezun olduğu bölümün belirtilmesi zorunludur.
+              </p>
+              <label class="block font-semibold text-slate-700">Mühendisin Mezun Olduğu Bölüm *</label>
+              <input v-model="uploadForm.engineerGraduationDepartment" type="text" required placeholder="Örn: Yazılım Mühendisliği / Bilgisayar Mühendisliği" class="w-full mt-1 p-2 border border-amber-300 rounded-lg bg-white">
+            </div>
+          </div>
+
+          <!-- İmza ve Onay Alanları Kontrolleri (Doküman 6.4) -->
+          <div class="bg-slate-50 p-4 rounded-xl border border-slate-200">
+            <h4 class="font-bold text-slate-800 text-sm mb-2 text-blue-700">
+              <i class="fa-solid fa-signature"></i> 4. İmza / Onay Alanları Kontrolü (Bölüm 6.4)
+            </h4>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
+              <label class="flex items-center gap-2 p-2 bg-white rounded border cursor-pointer">
+                <input type="checkbox" v-model="uploadForm.hasStudentSignature">
+                <span>Öğrenci Onay Kısmı (Beklenen: <strong>BOŞ</strong>)</span>
+              </label>
+              <label class="flex items-center gap-2 p-2 bg-white rounded border cursor-pointer">
+                <input type="checkbox" v-model="uploadForm.hasAdvisorSignature">
+                <span>Danışman Onay Kısmı (Beklenen: <strong>BOŞ</strong>)</span>
+              </label>
+              <label class="flex items-center gap-2 p-2 bg-white rounded border cursor-pointer">
+                <input type="checkbox" v-model="uploadForm.hasEmployerSignatureAndStamp">
+                <span>İşveren İmza + Kaşe (Beklenen: <strong>DOLU</strong>)</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Modal Alt Butonlar -->
+          <div class="flex justify-end gap-3 pt-3 border-t">
+            <button type="button" @click="showUploadModal = false" class="px-4 py-2 border rounded-lg text-slate-600 hover:bg-slate-50 font-semibold">
+              Vazgeç
+            </button>
+            <button type="submit" :disabled="loading" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 py-2 rounded-lg transition shadow flex items-center gap-2">
+              <i v-if="loading" class="fa-solid fa-circle-notch fa-spin"></i>
+              <span v-else><i class="fa-solid fa-gears mr-1"></i> Evrakı Yükle ve Kural Motorunu Çalıştır</span>
+            </button>
+          </div>
+        </form>
+
+      </div>
+    </div>
+
+    <!-- ================= MODAL 2: AYRINTILI DENETİM RAPORU GÖRÜNTÜLEYİCİ ================= -->
+    <div v-if="selectedReportDoc" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+      <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden">
+        
+        <div class="p-4 bg-slate-900 text-white flex justify-between items-center">
+          <div class="flex items-center gap-2">
+            <i class="fa-solid fa-microchip text-indigo-400 text-xl"></i>
+            <div>
+              <h3 class="font-bold text-base">Ek-16 Kural Doğrulama Raporu</h3>
+              <p class="text-xs text-slate-300">{{ selectedReportDoc.fileName }} ({{ selectedReportDoc.studentFullName }})</p>
+            </div>
+          </div>
+          <button @click="selectedReportDoc = null" class="text-white/80 hover:text-white text-xl">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+
+        <div class="p-6 overflow-y-auto space-y-5 text-xs flex-1">
+          
+          <!-- Rapor Özet Kartı -->
+          <div class="p-4 rounded-xl flex flex-wrap justify-between items-center gap-3" :class="parsedReport.isOverallValid ? 'bg-emerald-50 border border-emerald-200 text-emerald-900' : 'bg-red-50 border border-red-200 text-red-900'">
+            <div>
+              <div class="text-base font-bold flex items-center gap-2">
+                <i :class="parsedReport.isOverallValid ? 'fa-solid fa-circle-check text-emerald-600' : 'fa-solid fa-circle-xmark text-red-600'"></i>
+                <span>{{ parsedReport.isOverallValid ? 'TÜM KURALLAR SAĞLANDI (ONAYLANDI)' : 'EKSİK VEYA HATALI ALANLAR TESPİT EDİLDİ' }}</span>
+              </div>
+              <p class="text-xs mt-1">
+                Sonuç Statüsü: <strong class="underline">{{ selectedReportDoc.status }}</strong> • 
+                Hata: <strong>{{ parsedReport.errorCount }}</strong> • 
+                Uyarı: <strong>{{ parsedReport.warningCount }}</strong> • 
+                Geçen: <strong>{{ parsedReport.passedCount }}</strong>
+              </p>
+            </div>
+            <span :class="getStatusBadgeClass(selectedReportDoc.status)" class="status-badge px-3 py-1 rounded-full text-xs">
+              {{ selectedReportDoc.status }}
+            </span>
+          </div>
+
+          <!-- Sistem Önerisi ve Tarih Bilgisi -->
+          <div v-if="parsedReport.suggestedSubmissionDate" class="bg-blue-50 border border-blue-200 p-3 rounded-xl text-blue-900">
+            <span class="font-bold"><i class="fa-solid fa-lightbulb text-amber-500 mr-1"></i> Sistem Tarafından Önerilen En Geç Teslim Tarihi:</span>
+            <span class="ml-1 font-semibold underline">{{ parsedReport.suggestedSubmissionDate }}</span> (Staj başlangıcından 30 gün önce kuralı)
+          </div>
+
+          <!-- Kural Bazında Sonuçlar Listesi -->
+          <div>
+            <h4 class="font-bold text-slate-800 text-sm mb-3 flex items-center gap-1.5">
+              <i class="fa-solid fa-list-check text-indigo-600"></i> Kural Motoru Denetim Sonuçları:
+            </h4>
+            <div class="space-y-2">
+              <div v-for="(r, idx) in parsedReport.results" :key="idx" class="p-3 rounded-xl border flex items-start justify-between gap-3" :class="r.severity === 0 ? 'bg-emerald-50/40 border-emerald-200' : (r.severity === 1 ? 'bg-amber-50/50 border-amber-200' : 'bg-red-50/50 border-red-200')">
+                <div class="space-y-1">
+                  <div class="flex items-center gap-2">
+                    <span :class="r.severity === 0 ? 'text-emerald-600' : (r.severity === 1 ? 'text-amber-600' : 'text-red-600')" class="font-bold">
+                      <i :class="r.severity === 0 ? 'fa-solid fa-check-circle' : 'fa-solid fa-triangle-exclamation'"></i>
+                    </span>
+                    <strong class="text-slate-800 text-xs">{{ r.ruleName }}</strong>
+                    <span class="text-[10px] text-slate-400">({{ r.category }})</span>
+                  </div>
+                  <p class="text-slate-700 text-[11px]">{{ r.message }}</p>
+                  <p v-if="r.suggestion" class="text-[11px] text-blue-700 bg-blue-50/80 px-2 py-1 rounded inline-block font-medium">
+                    <i class="fa-solid fa-arrow-right mr-1"></i> {{ r.suggestion }}
+                  </p>
+                </div>
+                <span :class="r.severity === 0 ? 'bg-emerald-100 text-emerald-800' : (r.severity === 1 ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-800')" class="px-2 py-0.5 rounded text-[10px] font-bold uppercase whitespace-nowrap">
+                  {{ r.severity === 0 ? 'GEÇTİ' : (r.severity === 1 ? 'UYARI' : 'HATA') }}
+                </span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="p-4 bg-slate-50 border-t flex justify-end">
+          <button @click="selectedReportDoc = null" class="bg-slate-800 hover:bg-slate-900 text-white font-semibold px-4 py-2 rounded-lg text-xs transition">
+            Kapat
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ================= POP-UP ALERT (Doküman 4.6 Gereksinimi) ================= -->
+    <div v-if="popupAlert" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+      <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md p-6 text-center">
+        <div class="w-14 h-14 mx-auto rounded-full flex items-center justify-center text-2xl mb-3" :class="popupAlert.isError ? 'bg-red-100 text-red-600' : 'bg-emerald-100 text-emerald-600'">
+          <i :class="popupAlert.isError ? 'fa-solid fa-triangle-exclamation' : 'fa-solid fa-circle-check'"></i>
+        </div>
+        <h3 class="text-base font-bold text-slate-800">{{ popupAlert.title }}</h3>
+        <p class="text-xs text-slate-600 mt-2 whitespace-pre-line">{{ popupAlert.message }}</p>
+        <button @click="popupAlert = null" class="mt-5 w-full bg-slate-800 hover:bg-slate-900 text-white font-semibold py-2 rounded-xl text-xs transition">
+          Tamam
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
