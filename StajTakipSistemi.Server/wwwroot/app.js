@@ -505,6 +505,7 @@ createApp({
       }
     });
 
+    
     return {
       currentUser,
       loading,
