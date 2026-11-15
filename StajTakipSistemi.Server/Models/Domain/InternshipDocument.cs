@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 
 namespace StajTakipSistemi.Server.Models.Domain
 {
@@ -64,6 +64,7 @@ namespace StajTakipSistemi.Server.Models.Domain
         public string Status { get; set; } = DocumentStatuses.Yuklendi;
         public bool IsApproved { get; set; } = false;
         public string ValidationReportJson { get; set; } = string.Empty;
+        public string? ExtractedText { get; set; }
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public DateTime? UpdatedAt { get; set; }

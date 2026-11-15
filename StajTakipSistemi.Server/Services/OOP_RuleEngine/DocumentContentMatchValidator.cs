@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using StajTakipSistemi.Server.Models.Domain;
 
@@ -16,38 +16,57 @@ namespace StajTakipSistemi.Server.Services.OOP_RuleEngine
 
         public override RuleResult Evaluate(InternshipDocument document, StudentDatasetRecord? dbRecord)
         {
-            // Eğer belgeden metin çıkarılamamışsa veya taranmış resim ise (OCR finalde olduğu için) uyarı ver
-            if (string.IsNullOrWhiteSpace(document.ValidationReportJson) && string.IsNullOrWhiteSpace(document.FileName))
-            {
-                return Warning(RuleName, Category,
-                    "Yüklenen belgeden otomatik dijital metin çıkarılamadı. Belge içeriği görsel (taranmış) olabilir. Formda girilen bilgiler baz alınacaktır.",
-                    "Dijital PDF veya Word (.docx) formatında yüklenirse tam metin eşleşmesi yapılabilir.",
-                    "FileName");
-            }
-
-            // Eğer dosya ismi veya içerik mevcutsa formdaki temel alanların belgede geçip geçmediğini denetle
-            // Gerçek ortamda veya simülasyonda belgeden çıkarılan metin karşılaştırılır
+            var text = document.ExtractedText ?? string.Empty;
             var matches = new List<string>();
             var mismatches = new List<string>();
 
+            // 1. Öğrenci Adı Soyadı Kontrolü
             if (!string.IsNullOrWhiteSpace(document.StudentFullName))
             {
-                matches.Add($"Öğrenci Adı: {document.StudentFullName}");
+                if (text.IndexOf(document.StudentFullName, StringComparison.OrdinalIgnoreCase) >= 0)
+                    matches.Add($"Öğrenci Adı: {document.StudentFullName}");
+                else
+                    mismatches.Add($"Öğrenci Adı ({document.StudentFullName})");
             }
 
+            // 2. TC Kimlik No Kontrolü
             if (!string.IsNullOrWhiteSpace(document.StudentTcNo))
             {
-                matches.Add($"TC No: {document.StudentTcNo}");
+                if (text.Contains(document.StudentTcNo))
+                    matches.Add($"TC No: {document.StudentTcNo}");
+                else
+                    mismatches.Add($"TC No ({document.StudentTcNo})");
             }
 
+            // 3. Öğrenci No Kontrolü
+            if (!string.IsNullOrWhiteSpace(document.StudentNumber))
+            {
+                if (text.Contains(document.StudentNumber))
+                    matches.Add($"Öğrenci No: {document.StudentNumber}");
+                else
+                    mismatches.Add($"Öğrenci No ({document.StudentNumber})");
+            }
+
+            // 4. Kurum Adı Kontrolü
             if (!string.IsNullOrWhiteSpace(document.CompanyName))
             {
-                matches.Add($"Kurum Adı: {document.CompanyName}");
+                if (text.IndexOf(document.CompanyName, StringComparison.OrdinalIgnoreCase) >= 0)
+                    matches.Add($"Kurum Adı: {document.CompanyName}");
+                else
+                    mismatches.Add($"Kurum Adı ({document.CompanyName})");
+            }
+
+            if (mismatches.Count > 0)
+            {
+                return Warning(RuleName, Category,
+                    $"Belgeden taranan metin ile formda beyan edilen veriler arasında uyuşmazlıklar tespit edildi: [{string.Join(", ", mismatches)}] belge metninde bulunamadı.",
+                    "Formda girdiğiniz bilgilerin yüklenen Ek-16 belgesiyle birebir eşleştiğinden emin olunuz.",
+                    "ExtractedText");
             }
 
             return Success(RuleName, Category,
-                $"Belgenin taranmasıyla elde edilen metin bilgileri ile formda beyan edilen veriler ({string.Join(", ", matches)}) karşılaştırıldı ve uyumlu bulundu. Belge teslime hazırdır.",
-                "FileName");
+                $"Belgenin taranmasıyla elde edilen dijital metin bilgileri ile formda beyan edilen veriler ({string.Join(", ", matches)}) birebir eşleşti ve doğrulandı. Belge teslime hazırdır.",
+                "ExtractedText");
         }
     }
 }

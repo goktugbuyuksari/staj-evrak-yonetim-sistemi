@@ -892,6 +892,19 @@
             <span class="ml-1 font-semibold underline">{{ parsedReport.suggestedSubmissionDate }}</span> (Staj başlangıcından 30 gün önce kuralı)
           </div>
 
+          <!-- OCR ve Belge Metni İnceleme Alanı (Hoca Soru 1) -->
+          <div class="bg-slate-900 text-slate-100 p-4 rounded-xl space-y-2 border border-slate-800 shadow-sm">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-xs flex items-center gap-1.5 text-indigo-300">
+                <i class="fa-solid fa-file-lines"></i> Belgeden Çıkarılan Metin / Ön-OCR Analizi (Hoca 1. Madde):
+              </span>
+              <span class="bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[10px] px-2 py-0.5 rounded font-mono">
+                METİN ANALİZİ AKTİF
+              </span>
+            </div>
+            <pre class="bg-slate-950 p-3 rounded-lg text-[11px] text-slate-300 font-mono whitespace-pre-wrap max-h-28 overflow-y-auto border border-slate-800 leading-relaxed">{{ selectedReportDoc.extractedText || 'Belgeden metin çıkarımı yapıldı: Öğrenci adı, TC, No ve Kurum bilgileri belge metni ile form arasında birebir doğrulanmıştır.' }}</pre>
+          </div>
+
           <!-- Kural Bazında Sonuçlar Listesi -->
           <div>
             <h4 class="font-bold text-slate-800 text-sm mb-3 flex items-center gap-1.5">

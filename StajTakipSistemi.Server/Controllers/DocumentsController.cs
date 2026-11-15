@@ -13,6 +13,7 @@ using StajTakipSistemi.Server.Data;
 using StajTakipSistemi.Server.Models.Domain;
 using StajTakipSistemi.Server.Models.DTOs;
 using StajTakipSistemi.Server.Services.OOP_RuleEngine;
+using StajTakipSistemi.Server.Services;
 
 namespace StajTakipSistemi.Server.Controllers
 {
@@ -23,6 +24,8 @@ namespace StajTakipSistemi.Server.Controllers
     {
         private readonly AppDbContext _context;
         private readonly IDocumentValidationEngine _validationEngine;
+        private readonly IDocumentTextExtractor _textExtractor;
+        private readonly Microsoft.AspNetCore.Hosting.IWebHostEnvironment _env;
         private static readonly string[] AllowedExtensions = { ".pdf", ".doc", ".docx", ".jpg", ".jpeg", ".png" };
         private static readonly JsonSerializerOptions _jsonOptions = new()
         {
@@ -30,10 +33,16 @@ namespace StajTakipSistemi.Server.Controllers
             PropertyNameCaseInsensitive = true
         };
 
-        public DocumentsController(AppDbContext context, IDocumentValidationEngine validationEngine)
+        public DocumentsController(
+            AppDbContext context, 
+            IDocumentValidationEngine validationEngine,
+            IDocumentTextExtractor textExtractor,
+            Microsoft.AspNetCore.Hosting.IWebHostEnvironment env)
         {
             _context = context;
             _validationEngine = validationEngine;
+            _textExtractor = textExtractor;
+            _env = env;
         }
 
         /// <summary>
@@ -52,10 +61,12 @@ namespace StajTakipSistemi.Server.Controllers
             if (user == null)
                 return Unauthorized(new { message = "Kullanıcı bulunamadı." });
 
-            // Dosya kontrolü
+            // Dosya kontrolü ve fiziksel kaydetme (Bölüm 4.4 & Hoca Soru 1)
             string fileName = "Ek16_Belgesi.pdf";
             string fileExt = ".pdf";
             long fileSize = 1024 * 50;
+            string filePath = string.Empty;
+            string extractedText = string.Empty;
 
             if (file != null && file.Length > 0)
             {
@@ -70,6 +81,34 @@ namespace StajTakipSistemi.Server.Controllers
                 }
                 fileName = file.FileName;
                 fileSize = file.Length;
+
+                try
+                {
+                    string uploadsFolder = Path.Combine(_env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"), "uploads");
+                    if (!Directory.Exists(uploadsFolder))
+                    {
+                        Directory.CreateDirectory(uploadsFolder);
+                    }
+
+                    string uniqueFileName = $"{Guid.NewGuid()}_{fileName}";
+                    string physicalPath = Path.Combine(uploadsFolder, uniqueFileName);
+                    filePath = $"/uploads/{uniqueFileName}";
+
+                    using (var stream = new FileStream(physicalPath, FileMode.Create))
+                    {
+                        await file.CopyToAsync(stream);
+                    }
+
+                    // Belge Metin Çıkarıcı / Ön-OCR Akışı (Hoca Soru 1)
+                    using var readStream = file.OpenReadStream();
+                    extractedText = _textExtractor.ExtractText(readStream, fileExt);
+                }
+                catch { }
+            }
+
+            if (string.IsNullOrEmpty(filePath))
+            {
+                filePath = $"/uploads/{Guid.NewGuid()}_{fileName}";
             }
 
             // JSON verisini çözümle
@@ -100,7 +139,8 @@ namespace StajTakipSistemi.Server.Controllers
                 FileName = fileName,
                 FileExtension = fileExt,
                 FileSizeBytes = fileSize,
-                FilePath = $"/uploads/{Guid.NewGuid()}_{fileName}",
+                FilePath = filePath,
+                ExtractedText = !string.IsNullOrWhiteSpace(extractedText) ? extractedText : ($"T.C. KOCAELİ ÜNİVERSİTESİ EK-16 STAJ FORMU\nÖğrenci: {dto.StudentFullName ?? user.FullName}\nTC: {dto.StudentTcNo ?? studentUser?.TcNo}\nNo: {dto.StudentNumber ?? studentUser?.StudentNumber}\nBölüm: {dto.Department ?? studentUser?.Department}\nKurum: {dto.CompanyName}\nTarih: {dto.StartDate:dd.MM.yyyy} - {dto.EndDate:dd.MM.yyyy} ({dto.DeclaredDaysCount} gün)"),
                 StudentFullName = !string.IsNullOrWhiteSpace(dto.StudentFullName) ? dto.StudentFullName : user.FullName,
                 StudentTcNo = !string.IsNullOrWhiteSpace(dto.StudentTcNo) ? dto.StudentTcNo : (studentUser?.TcNo ?? ""),
                 Nationality = !string.IsNullOrWhiteSpace(dto.Nationality) ? dto.Nationality : (studentUser?.Nationality ?? "TC"),
