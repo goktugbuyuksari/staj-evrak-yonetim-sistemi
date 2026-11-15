@@ -1,0 +1,321 @@
+@startuml
+title 1. UML Kullanım Senaryosu (Use Case) Diyagramı
+left to right direction
+skinparam packageStyle rectangle
+
+actor "Öğrenci (ROLE_STUDENT)" as Ogrenci
+actor "Yönetici (ROLE_ADMIN)" as Admin
+
+rectangle "Staj Evrak Doğrulama ve Yönetim Sistemi" {
+    usecase "Sisteme Giriş Yapma (Login)" as UC1
+    usecase "Ek-16 Staj Belgesi Yükleme" as UC2
+    usecase "Staj Haftalık Günlerini ve Tarihini Seçme" as UC3
+    usecase "Otomatik Kural Doğrulama Raporunu İnceleme" as UC4
+    usecase "Google Form Teslim URL'si Girme & Doğrulama" as UC5
+    usecase "Başvuru Durumunu Takip Etme" as UC6
+    
+    usecase "Test Veri Seti Yükleme (CSV)" as UC7
+    usecase "Tüm Başvuruları Listeleme & Filtreleme" as UC8
+    usecase "Tamamlanan Belgeleri İnceleme" as UC9
+    usecase "Başvuru Statüsü Güncelleme (Override)" as UC10
+    usecase "Tamamlanan Başvuruyu Silme / Yönetme" as UC11
+    usecase "Kilitli Hesapların Kilidini Açma & Log İnceleme" as UC12
+    usecase "Ek-17 Belgesi Üretme (Final Hazırlığı)" as UC13
+}
+
+Ogrenci --> UC1
+Ogrenci --> UC2
+Ogrenci --> UC3
+Ogrenci --> UC4
+Ogrenci --> UC5
+Ogrenci --> UC6
+
+Admin --> UC1
+Admin --> UC7
+Admin --> UC8
+Admin --> UC9
+Admin --> UC10
+Admin --> UC11
+Admin --> UC12
+Admin --> UC13
+@enduml
+
+
+@startuml
+title 2. Belge Statü ve İşlem Akış Diyagramı (Flowchart)
+skinparam DefaultTextAlignment center
+
+start
+:Başlangıç: Öğrenci Ek-16 Yükler;
+if (Dosya Formatı Uygun mu?\n(.pdf, .docx, .doc, .png, .jpg)) then (Hayır)
+    :HATA: Dosya Reddedildi & Kullanıcıya Uyarı Gösterildi;
+    stop
+else (Evet)
+    :Statü: Yüklendi;
+    :Statü: İnceleniyor (Kural Motoru Devrede);
+    
+    split
+        :1. Format Kontrolleri (Adres, Tel +90, E-posta, Faks);
+    split again
+        :2. Kimlik Kontrolü (TC Algoritması veya Yabancı 99...);
+    split again
+        :3. Akademik Yıl & 30 Gün Teslim Kuralı;
+    split again
+        :4. Haftalık Günler & Resmi Tatiller Düşülerek Gün Hesabı;
+    split again
+        :5. İşveren İmza/Kaşe & Mühendis Sayısı (Mühendis < 5 Uyarısı);
+    split again
+        :6. DB Öğrenci Veri Seti Çapraz Doğrulaması;
+    end split
+    
+    if (Kritik Hata / Uyuşmazlık Var mı?) then (Evet (Hata >= 1))
+        :Statü: Hatalı / Eksik\n(Hata listesi ve öneriler raporlanır);
+        :Öğrenci Eksikleri/Hataları Düzeltir;
+        :Statü: Yüklendi;
+        note right: Döngü başa döner
+    else (Hayır (Hata = 0))
+        :Statü: Onaylandı;
+        :Statü: Tamamlandı;
+        :Belge Kilitlendi!\nÖğrenci değiştiremez ve silemez.\nYalnızca Admin yönetebilir.;
+        :Google Form URL'sine Otomatik Aktarım;
+        :Admin Otomatik Ek-17 Üretebilir;
+        stop
+    endif
+endif
+@enduml
+
+
+@startuml
+title 3. Veri Tabanı İlişkisel Şeması (ER Diyagramı)
+skinparam linetype ortho
+
+entity "USERS" {
+    * Id : int <<PK>>
+    --
+    * Username : string <<UK>>
+    * Email : string <<UK>>
+    FullName : string
+    Role : string
+    PasswordHash : string
+    PasswordSalt : string
+    FailedLoginAttempts : int
+    IsLocked : boolean
+    LockoutEndTime : datetime
+    UserType : string
+    StudentNumber : string
+    TcNo : string
+    Nationality : string
+    Department : string
+    CompletedInternshipDays : int
+    PhoneNumber : string
+    ResidentialAddress : string
+    HealthInsuranceStatus : string
+    DepartmentTitle : string
+    IsSuperAdmin : boolean
+}
+
+entity "STUDENT_DATASET_RECORDS" {
+    * Id : int <<PK>>
+    --
+    FullName : string
+    TcNo : string
+    Nationality : string
+    StudentNumber : string
+    BirthDate : string
+    ResidentialAddress : string
+    Department : string
+    SubmissionYear : string
+    CompletedInternshipDays : int
+    Email : string
+    PhoneNumber : string
+    HealthInsuranceStatus : string
+    UploadedAt : datetime
+}
+
+entity "INTERNSHIP_DOCUMENTS" {
+    * Id : int <<PK>>
+    --
+    StudentUserId : int <<FK>>
+    StudentUsername : string
+    FileName : string
+    FilePath : string
+    FileExtension : string
+    FileSizeBytes : long
+    StudentFullName : string
+    StudentTcNo : string
+    Nationality : string
+    StudentNumber : string
+    Department : string
+    Address : string
+    PhoneNumber : string
+    Email : string
+    FaxNumber : string
+    AcademicYear : string
+    SubmissionDate : date
+    StartDate : date
+    EndDate : date
+    SelectedDaysOfWeek : string
+    DeclaredDaysCount : int
+    CompanyName : string
+    CompanyAddress : string
+    EngineerCount : int
+    EngineerGraduationDepartment : string
+    HasStudentSignature : boolean
+    HasAdvisorSignature : boolean
+    HasEmployerSignatureAndStamp : boolean
+    GoogleFormUrl : string
+    Status : string
+    IsApproved : boolean
+    ValidationReportJson : text
+    CreatedAt : datetime
+    UpdatedAt : datetime
+}
+
+entity "FAILED_LOGIN_LOGS" {
+    * Id : int <<PK>>
+    --
+    UsernameAttempted : string
+    IpAddress : string
+    AttemptTime : datetime
+    Reason : string
+    TriggeredLockout : boolean
+}
+
+entity "SYSTEM_LOGS" {
+    * Id : int <<PK>>
+    --
+    ActionType : string
+    Username : string
+    Details : string
+    Timestamp : datetime
+}
+
+USERS ||--o{ INTERNSHIP_DOCUMENTS : "sahiptir"
+@enduml
+
+
+
+
+@startuml
+title 4. Nesne Yönelimli Programlama - Sınıf (Class) Diyagramı
+skinparam classAttributeIconSize 0
+
+abstract class User {
+    + {abstract} int Id
+    + {abstract} string Username
+    + {abstract} string Email
+    + {abstract} string FullName
+    + {abstract} string Role
+    # string _passwordHash
+    # string _passwordSalt
+    # int _failedLoginAttempts
+    # bool _isLocked
+    + SetPassword(string) void
+    + VerifyPassword(string) bool
+    + RecordFailedLoginAttempt() bool
+    + ResetFailedAttempts() void
+    + Unlock() void
+    + {abstract} string GetUserTypeDescription()
+    + {abstract} bool CanAccessAdminPanel()
+}
+
+class StudentUser {
+    + string StudentNumber
+    + string TcNo
+    + string Nationality
+    + string Department
+    + int CompletedInternshipDays
+    + string GetUserTypeDescription()
+    + bool CanAccessAdminPanel()
+}
+
+class AdminUser {
+    + string DepartmentTitle
+    + bool IsSuperAdmin
+    + string GetUserTypeDescription()
+    + bool CanAccessAdminPanel()
+}
+
+User <|-- StudentUser : Kalıtım
+User <|-- AdminUser : Kalıtım
+
+interface IValidationRule {
+    + string RuleName
+    + string Category
+    + RuleResult Evaluate(InternshipDocument, StudentDatasetRecord)
+}
+
+abstract class BaseValidator {
+    + {abstract} string RuleName
+    + {abstract} string Category
+    + {abstract} RuleResult Evaluate(InternshipDocument, StudentDatasetRecord)
+    # bool MatchRegex(string, string)
+    # RuleResult Success(...)
+    # RuleResult Warning(...)
+    # RuleResult Error(...)
+}
+
+IValidationRule <|.. BaseValidator
+
+abstract class IdentityValidator {
+    + string Category
+}
+BaseValidator <|-- IdentityValidator
+
+class TcIdentityValidator {
+    + string RuleName
+    + RuleResult Evaluate(...)
+}
+class ForeignIdentityValidator {
+    + string RuleName
+    + RuleResult Evaluate(...)
+}
+
+IdentityValidator <|-- TcIdentityValidator
+IdentityValidator <|-- ForeignIdentityValidator
+
+class AddressFormatValidator {
+    + RuleResult Evaluate(...)
+}
+class ContactInfoValidator {
+    + RuleResult Evaluate(...)
+}
+class AcademicTermValidator {
+    + RuleResult Evaluate(...)
+}
+class SubmissionDateValidator {
+    + RuleResult Evaluate(...)
+}
+class InternshipWorkDaysValidator {
+    - IHolidayService _holidayService
+    + RuleResult Evaluate(...)
+}
+class EmployerApprovalValidator {
+    + RuleResult Evaluate(...)
+}
+class EngineerCountValidator {
+    + RuleResult Evaluate(...)
+}
+class DatasetMatchValidator {
+    + RuleResult Evaluate(...)
+}
+
+BaseValidator <|-- AddressFormatValidator
+BaseValidator <|-- ContactInfoValidator
+BaseValidator <|-- AcademicTermValidator
+BaseValidator <|-- SubmissionDateValidator
+BaseValidator <|-- InternshipWorkDaysValidator
+BaseValidator <|-- EmployerApprovalValidator
+BaseValidator <|-- EngineerCountValidator
+BaseValidator <|-- DatasetMatchValidator
+
+class DocumentValidationEngine {
+    - List~IValidationRule~ _rules
+    - IHolidayService _holidayService
+    + ValidationReport ValidateDocument(InternshipDocument, StudentDatasetRecord)
+}
+
+DocumentValidationEngine o-- IValidationRule : Polimorfik Liste
+InternshipWorkDaysValidator --> IHolidayService : Bağımlılık
+
+@enduml
