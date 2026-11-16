@@ -15,6 +15,7 @@ namespace StajTakipSistemi.Server.Models.Domain
     /// NYP - KAPSÜLLEME (Encapsulation): Ek-16 Staj Başvuru Belgesi Varlığı.
     /// Belge durum geçişleri ve değişmezlik (immutability) kuralları burada kapsüllenir.
     /// </summary>
+    // OOP - KAPSÜLLEME & VERİTABANI VARLIĞI: Ek-16 staj belgesi alanları ve değişmezlik kuralları
     public class InternshipDocument
     {
         public int Id { get; set; }
@@ -72,11 +73,13 @@ namespace StajTakipSistemi.Server.Models.Domain
         /// <summary>
         /// Doküman Bölüm 5: Tamamlandı statüsündeki belgeler bir daha öğrenci tarafından güncellenemez veya silinemez!
         /// </summary>
+        // OOP - KAPSÜLLEME & İŞ KURALI: 'Tamamlandı' statüsündeki evrak öğrenci tarafından değiştirilemez
         public bool CanStudentModify()
         {
             return Status != DocumentStatuses.Tamamlandi;
         }
 
+        // OOP - KAPSÜLLEME & İŞ KURALI: 'Tamamlandı' statüsündeki evrak öğrenci tarafından silinemez
         public bool CanStudentDelete()
         {
             return Status != DocumentStatuses.Tamamlandi;

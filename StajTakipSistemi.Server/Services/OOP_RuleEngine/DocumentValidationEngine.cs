@@ -15,6 +15,7 @@ namespace StajTakipSistemi.Server.Services.OOP_RuleEngine
     /// Birbirinden farklı doğrulayıcı sınıfları IValidationRule listesi üzerinden
     /// tip bağımsız olarak polimorfik biçimde çalıştırır ve tek bir standart rapor üretir.
     /// </summary>
+    // OOP - COMPOSITE PATTERN: Bağımsız kural stratejilerini tek çatı altında toplayıp yöneten motor sınıfı
     public class DocumentValidationEngine : IDocumentValidationEngine
     {
         private readonly List<IValidationRule> _rules;
@@ -56,6 +57,7 @@ namespace StajTakipSistemi.Server.Services.OOP_RuleEngine
             report.NeedsEngineerDepartmentPrompt = document.EngineerCount < 5;
 
             // NYP - ÇOK BİÇİMLİLİK: Her bir kural IValidationRule arayüzü üzerinden polimorfik olarak çağrılır
+            // OOP - ÇOK BİÇİMLİLİK (Polymorphism): Tüm kurallar IValidationRule üzerinden dinamik olarak çalıştırılır
             foreach (var rule in _rules)
             {
                 var result = rule.Evaluate(document, dbRecord);

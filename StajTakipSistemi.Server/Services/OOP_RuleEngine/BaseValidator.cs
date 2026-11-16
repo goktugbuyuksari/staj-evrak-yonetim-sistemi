@@ -4,10 +4,7 @@ using StajTakipSistemi.Server.Models.Domain;
 
 namespace StajTakipSistemi.Server.Services.OOP_RuleEngine
 {
-    /// <summary>
-    /// NYP - SOYUTLAMA (Abstraction): Tüm iş kuralı ve doğrulama motorları bu arayüzü uygular.
-    /// Kural motoru kuralların iç detaylarını bilmeden polimorfik olarak çalıştırır.
-    /// </summary>
+    // OOP - STRATEGY PATTERN & SOYUTLAMA: Her bir kural bağımsız bir strateji arayüzünü uygular
     public interface IValidationRule
     {
         string RuleName { get; }
@@ -15,15 +12,13 @@ namespace StajTakipSistemi.Server.Services.OOP_RuleEngine
         RuleResult Evaluate(InternshipDocument document, StudentDatasetRecord? dbRecord);
     }
 
-    /// <summary>
-    /// NYP - SOYUTLAMA (Abstraction) & KALITIM (Inheritance):
-    /// Tüm somut doğrulayıcı sınıflar için ortak yardımcı metotlar ve taban şablon sağlar.
-    /// </summary>
+    // OOP - KALITIM & SOYUTLAMA: Tüm somut doğrulayıcı sınıflar için ortak şablon ve yardımcı metotlar sunar
     public abstract class BaseValidator : IValidationRule
     {
         public abstract string RuleName { get; }
         public abstract string Category { get; }
 
+        // OOP - ÇOK BİÇİMLİLİK: Her kural kendi doğrulama mantığını bu metotta uygular
         public abstract RuleResult Evaluate(InternshipDocument document, StudentDatasetRecord? dbRecord);
 
         protected static bool MatchRegex(string? input, string pattern)

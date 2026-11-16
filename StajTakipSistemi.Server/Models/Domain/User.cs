@@ -4,11 +4,7 @@ using System.Text;
 
 namespace StajTakipSistemi.Server.Models.Domain
 {
-    /// <summary>
-    /// NYP - KAPSÜLLEME  ve SOYUTLAMA Örneği:
-    /// Kullanıcı verileri private alanlarda saklanır ve sadece iş kuralları barındıran metotlarla yönetilir.
-    /// Şifreler hash'lenerek saklanır ve doğrudan dışarıdan değiştirilemez.
-    /// </summary>
+    // OOP - SOYUTLAMA (Abstraction): Tüm kullanıcıların ortak özelliklerini barındıran soyut taban sınıf
     public abstract class User
     {
         public int Id { get; set; }
@@ -18,7 +14,7 @@ namespace StajTakipSistemi.Server.Models.Domain
         public string Role { get; protected set; } = string.Empty;
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-        // Kapsüllenmiş güvenlik alanları
+        // OOP - KAPSÜLLEME (Encapsulation): Hassas güvenlik verileri dışarıya kapalı tutulur (private/protected)
         protected string _passwordHash = string.Empty;
         protected string _passwordSalt = string.Empty;
         protected int _failedLoginAttempts = 0;
@@ -55,9 +51,7 @@ namespace StajTakipSistemi.Server.Models.Domain
             set => _lockoutEndTime = value;
         }
 
-        /// <summary>
-        /// Şifreyi Salt ve Hash oluşturarak kapsüllenmiş bir şekilde kaydedilir.
-        /// </summary>
+        // OOP - KAPSÜLLEME: Şifre doğrudan atanmaz; 128-bit rastgele Salt üretilip SHA-256 ile özetlenir
         public void SetPassword(string password)
         {
             if (string.IsNullOrWhiteSpace(password))
@@ -68,9 +62,7 @@ namespace StajTakipSistemi.Server.Models.Domain
             _passwordHash = HashPasswordWithSalt(password, _passwordSalt);
         }
 
-        /// <summary>
-        /// Verilen şifrenin doğruluğunu kontrol edilir.
-        /// </summary>
+        // OOP - KAPSÜLLEME: Şifre doğrulama işlemi sınıf içinde güvenle yürütülür
         public bool VerifyPassword(string inputPassword)
         {
             if (string.IsNullOrWhiteSpace(inputPassword) || string.IsNullOrEmpty(_passwordHash))
@@ -80,17 +72,15 @@ namespace StajTakipSistemi.Server.Models.Domain
             return _passwordHash == computed;
         }
 
-        /// <summary>
-        /// 5 hatalı denemede hesabı kilitler.
-        /// </summary>
+        // OOP - KAPSÜLLEME & İŞ KURALI: 5 hatalı denemede hesap otomatik olarak kilitlenir
         public bool RecordFailedLoginAttempt()
         {
             _failedLoginAttempts++;
             if (_failedLoginAttempts >= 5)
             {
                 _isLocked = true;
-                _lockoutEndTime = DateTime.UtcNow.AddMinutes(15); // 15 dakika veya yönetici müdahalesi
-                return true; // Kilitlendi
+                _lockoutEndTime = DateTime.UtcNow.AddMinutes(15);
+                return true;
             }
             return false;
         }
@@ -117,9 +107,7 @@ namespace StajTakipSistemi.Server.Models.Domain
             return Convert.ToBase64String(hash);
         }
 
-        /// <summary>
-        /// NYP - Soyutlama: Alt sınıfların kendilerine özgü rol yetkilerini tanımlamasını zorunlu kılar.
-        /// </summary>
+        // OOP - ÇOK BİÇİMLİLİK İÇİN SOYUT METOTLAR: Alt sınıflar bu metotları ezmek (override) zorundadır
         public abstract string GetUserTypeDescription();
         public abstract bool CanAccessAdminPanel();
     }
