@@ -380,7 +380,7 @@ createApp({
         popupAlert.value = {
           isError: true,
           title: 'Hata',
-          message: e.message ? Evrak yükleme sırasında bir hata oluştu:  : 'Evrak yükleme sırasında bir hata oluştu.'
+          message: 'Evrak yükleme sırasında bir hata oluştu: ' + (e.message || e)
         };
       } finally {
         loading.value = false;
