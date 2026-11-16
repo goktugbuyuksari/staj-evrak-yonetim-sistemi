@@ -376,10 +376,11 @@ createApp({
         // Raporu göster
         viewReport(data.document);
       } catch (e) {
+        console.error('Evrak yükleme hatası:', e);
         popupAlert.value = {
           isError: true,
           title: 'Hata',
-          message: 'Evrak yükleme sırasında bir hata oluştu.'
+          message: e.message ? Evrak yükleme sırasında bir hata oluştu:  : 'Evrak yükleme sırasında bir hata oluştu.'
         };
       } finally {
         loading.value = false;

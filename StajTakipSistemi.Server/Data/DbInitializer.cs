@@ -1,5 +1,8 @@
 using System;
+using System.Collections.Generic;
+using System.Data;
 using System.Linq;
+using Microsoft.EntityFrameworkCore;
 using StajTakipSistemi.Server.Models.Domain;
 
 namespace StajTakipSistemi.Server.Data
@@ -9,6 +12,62 @@ namespace StajTakipSistemi.Server.Data
         public static void Initialize(AppDbContext context)
         {
             context.Database.EnsureCreated();
+
+            // SQLite Şema Kontrolü ve Eksik Kolonların Otomatik Eklenmesi (Farklı bilgisayarlardaki eski staj_takip.db uyumluluğu için)
+            try
+            {
+                var conn = context.Database.GetDbConnection();
+                if (conn.State != ConnectionState.Open) conn.Open();
+
+                void EnsureColumns(string tableName, Dictionary<string, string> columns)
+                {
+                    var existingCols = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    using var cmd = conn.CreateCommand();
+                    cmd.CommandText = $"PRAGMA table_info({tableName});";
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            existingCols.Add(reader.GetString(1));
+                        }
+                    }
+
+                    foreach (var col in columns)
+                    {
+                        if (!existingCols.Contains(col.Key))
+                        {
+                            using var alterCmd = conn.CreateCommand();
+                            alterCmd.CommandText = $"ALTER TABLE {tableName} ADD COLUMN {col.Key} {col.Value};";
+                            alterCmd.ExecuteNonQuery();
+                        }
+                    }
+                }
+
+                EnsureColumns("InternshipDocuments", new Dictionary<string, string>
+                {
+                    { "ExtractedText", "TEXT DEFAULT ''" },
+                    { "ValidationReportJson", "TEXT DEFAULT ''" },
+                    { "GoogleFormUrl", "TEXT NULL" },
+                    { "FaxNumber", "TEXT NULL" },
+                    { "EngineerGraduationDepartment", "TEXT NULL" },
+                    { "EngineerCount", "INTEGER DEFAULT 1" },
+                    { "HasEmployerSignatureAndStamp", "INTEGER DEFAULT 1" },
+                    { "HasStudentSignature", "INTEGER DEFAULT 0" },
+                    { "HasAdvisorSignature", "INTEGER DEFAULT 0" },
+                    { "UpdatedAt", "TEXT NULL" }
+                });
+
+                EnsureColumns("Users", new Dictionary<string, string>
+                {
+                    { "CompletedInternshipDays", "INTEGER DEFAULT 0" },
+                    { "DepartmentTitle", "TEXT NULL" },
+                    { "IsSuperAdmin", "INTEGER DEFAULT 0" },
+                    { "FailedLoginAttempts", "INTEGER DEFAULT 0" },
+                    { "IsLocked", "INTEGER DEFAULT 0" },
+                    { "LockoutEndTime", "TEXT NULL" }
+                });
+            }
+            catch { }
 
             // Admin kullanıcısı ekle
             if (!context.AdminUsers.Any())

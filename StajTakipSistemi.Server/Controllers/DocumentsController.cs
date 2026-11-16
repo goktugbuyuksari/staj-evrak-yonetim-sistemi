@@ -172,31 +172,42 @@ namespace StajTakipSistemi.Server.Controllers
             var dbRecord = await _context.StudentDatasetRecords
                 .FirstOrDefaultAsync(r => r.StudentNumber == doc.StudentNumber || r.TcNo == doc.StudentTcNo);
 
-            // Kural motorunu çalıştır
-            var report = _validationEngine.ValidateDocument(doc, dbRecord);
-            doc.ValidationReportJson = JsonSerializer.Serialize(report, _jsonOptions);
-            doc.Status = report.FinalStatus;
-            doc.IsApproved = report.IsOverallValid;
-
-            _context.InternshipDocuments.Add(doc);
-            _context.SystemLogs.Add(new SystemLog
+            try
             {
-                ActionType = "DOCUMENT_UPLOAD",
-                Username = user.Username,
-                Details = $"Ek-16 belgesi yüklendi ve doğrulandı. Sonuç Statüsü: {doc.Status}. Hata: {report.ErrorCount}, Uyarı: {report.WarningCount}"
-            });
+                // Kural motorunu çalıştır
+                var report = _validationEngine.ValidateDocument(doc, dbRecord);
+                doc.ValidationReportJson = JsonSerializer.Serialize(report, _jsonOptions);
+                doc.Status = report.FinalStatus;
+                doc.IsApproved = report.IsOverallValid;
 
-            await _context.SaveChangesAsync();
+                _context.InternshipDocuments.Add(doc);
+                _context.SystemLogs.Add(new SystemLog
+                {
+                    ActionType = "DOCUMENT_UPLOAD",
+                    Username = user.Username,
+                    Details = $"Ek-16 belgesi yüklendi ve doğrulandı. Sonuç Statüsü: {doc.Status}. Hata: {report.ErrorCount}, Uyarı: {report.WarningCount}"
+                });
 
-            return Ok(new
+                await _context.SaveChangesAsync();
+
+                return Ok(new
+                {
+                    success = true,
+                    message = report.IsOverallValid
+                        ? "Belgeniz kurallara tam uyumlu olarak doğrulandı ve 'Tamamlandı' statüsüne alındı."
+                        : "Belgenizde eksik veya hatalı alanlar tespit edildi. Lütfen rapordaki uyarıları inceleyiniz.",
+                    document = doc,
+                    report = report
+                });
+            }
+            catch (Exception ex)
             {
-                success = true,
-                message = report.IsOverallValid
-                    ? "Belgeniz kurallara tam uyumlu olarak doğrulandı ve 'Tamamlandı' statüsüne alındı."
-                    : "Belgenizde eksik veya hatalı alanlar tespit edildi. Lütfen rapordaki uyarıları inceleyiniz.",
-                document = doc,
-                report = report
-            });
+                return StatusCode(500, new
+                {
+                    success = false,
+                    message = $"Evrak kaydedilirken veritabanı hatası oluştu: {ex.Message}. (Veritabanınız güncel değilse lütfen 'staj_takip.db' dosyasını silip sunucuyu yeniden başlatınız.)"
+                });
+            }
         }
 
         [HttpGet("my-documents")]
