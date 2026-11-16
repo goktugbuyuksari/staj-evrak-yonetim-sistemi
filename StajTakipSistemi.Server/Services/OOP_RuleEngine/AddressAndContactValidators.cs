@@ -4,102 +4,76 @@ using StajTakipSistemi.Server.Models.Domain;
 
 namespace StajTakipSistemi.Server.Services.OOP_RuleEngine
 {
-    /// <summary>
-    /// Doküman Bölüm 6.1:
-    /// Adres: Mahalle, Cadde/Sokak, Bina No, Daire No, İlçe/İl sırasıyla ve tam olmalıdır.
-    /// </summary>
+    // OOP - STRATEGY PATTERN: İkametgah adres bileşenlerini denetleyen kural sınıfı (Doküman 6.1)
     public class AddressFormatValidator : BaseValidator
     {
-        public override string RuleName => "Adres Format ve Sıralama Kontrolü";
-        public override string Category => "Format Doğrulama";
+        public override string RuleName => "İkametgâh Adresi Format Kontrolü (Kısıt 6.1)";
+        public override string Category => "Format";
 
+        // İŞ KURALI: Adreste Mahalle, Cadde/Sokak, No, İlçe/İl bileşenlerinin varlığı sorgulanır
         public override RuleResult Evaluate(InternshipDocument document, StudentDatasetRecord? dbRecord)
         {
-            string address = document.Address?.Trim() ?? string.Empty;
+            string? addr = document.Address;
+            if (string.IsNullOrWhiteSpace(addr))
+            {
+                return Error(RuleName, Category, "İkametgâh adresi boş bırakılamaz.", "Mahalle, Cadde/Sokak, No, İlçe/İl içerecek şekilde doldurunuz.", "Address");
+            }
 
-            if (string.IsNullOrWhiteSpace(address))
-                return Error(RuleName, Category, "İkametgâh adresi boş bırakılamaz.", "Mahalle, Cadde/Sokak, Bina No, Daire No, İlçe/İl sırasıyla yazınız.", "Address");
+            bool hasMah = Regex.IsMatch(addr, @"(mah(\.|)|mahalle)", RegexOptions.IgnoreCase);
+            bool hasCadSok = Regex.IsMatch(addr, @"(cad(\.|)|cadde|sok(\.|)|sokak|bulvar)", RegexOptions.IgnoreCase);
+            bool hasNo = Regex.IsMatch(addr, @"(no|kapı|d(:|\.|\s)|daire|\d+)", RegexOptions.IgnoreCase);
 
-            // Kural: Mahalle, Cadde veya Sokak, No/Bina, Daire, İlçe/İl anahtar unsurları içermeli
-            bool hasMahalle = Regex.IsMatch(address, @"(mah\.|mahalle|mahallesi)", RegexOptions.IgnoreCase);
-            bool hasCaddeOrSokak = Regex.IsMatch(address, @"(cad\.|cadde|caddesi|sok\.|sokak|sokağı)", RegexOptions.IgnoreCase);
-            bool hasBinaNo = Regex.IsMatch(address, @"(no|bina|kapı|numara)\s*[:.]?\s*\d+", RegexOptions.IgnoreCase) || Regex.IsMatch(address, @"\bno:\s*\d+", RegexOptions.IgnoreCase);
-            bool hasDaireNo = Regex.IsMatch(address, @"(d\.|daire|iç kapı)\s*[:.]?\s*\d+", RegexOptions.IgnoreCase) || Regex.IsMatch(address, @"\bdaire:\s*\d+", RegexOptions.IgnoreCase);
-            bool hasIlceIl = Regex.IsMatch(address, @"(/|-|,)\s*([a-zA-ZçğıöşüÇĞİÖŞÜ\s]+)$") || address.Contains("/");
+            if (!hasMah || !hasCadSok || !hasNo)
+            {
+                return Warning(
+                    RuleName, 
+                    Category, 
+                    "İkametgâh adresi eksik bileşenler içerebilir. (Mahalle, Cadde/Sokak, Bina No, Daire No, İlçe/İl belirtilmelidir.)",
+                    "Örn: Atatürk Mah. Cumhuriyet Cad. No: 12 Daire: 4 İzmit / Kocaeli",
+                    "Address"
+                );
+            }
 
-            if (!hasMahalle)
-                return Error(RuleName, Category, "Adres içerisinde 'Mahalle' (Mah.) bilgisi eksik.", "Örnek: Atatürk Mah. şeklinde mahalle bilgisini ekleyiniz.", "Address");
-
-            if (!hasCaddeOrSokak)
-                return Error(RuleName, Category, "Adres içerisinde 'Cadde' (Cad.) veya 'Sokak' (Sok.) bilgisi eksik.", "Örnek: Hürriyet Cad. veya Gül Sok. şeklinde belirtiniz.", "Address");
-
-            if (!hasBinaNo)
-                return Error(RuleName, Category, "Adres içerisinde 'Bina No' (No: X) eksik.", "Örnek: No: 15 şeklinde dış kapı/bina numarasını yazınız.", "Address");
-
-            if (!hasDaireNo)
-                return Error(RuleName, Category, "Adres içerisinde 'Daire No' (Daire: X) eksik.", "Örnek: Daire: 4 şeklinde daire numaranızı yazınız.", "Address");
-
-            if (!hasIlceIl)
-                return Warning(RuleName, Category, "Adres sonunda İlçe/İl ayrımı net değil.", "Örnek: İzmit / Kocaeli şeklinde ilçe ve il bilgisini belirtiniz.", "Address");
-
-            return Success(RuleName, Category, "Adres formatı (Mahalle, Cadde/Sokak, Bina No, Daire No, İlçe/İl) tam ve eksiksiz.", "Address");
+            return Success(RuleName, Category, "İkametgâh adresi format kuralına uygundur.", "Address");
         }
     }
 
-    /// <summary>
-    /// Doküman Bölüm 6.1:
-    /// Telefon: +90 xxx xxx xx xx formatında olmalıdır.
-    /// E-posta: Geçerli e-posta formatında olmalıdır.
-    /// E-posta + Telefon: İkisinin de bulunması zorunludur.
-    /// Faks: Boş bırakılabilir (nullable).
-    /// </summary>
+    // OOP - STRATEGY PATTERN: Telefon (+90 standardı) ve e-posta kurallarını denetleyen sınıf (Doküman 6.1)
     public class ContactInfoValidator : BaseValidator
     {
-        public override string RuleName => "İletişim Bilgileri (Telefon, E-posta, Faks) Kontrolü";
-        public override string Category => "Format Doğrulama";
+        public override string RuleName => "İletişim Bilgileri Format Kontrolü (Kısıt 6.1)";
+        public override string Category => "Format";
 
-        private static readonly Regex PhoneRegex = new Regex(@"^\+90\s[0-9]{3}\s[0-9]{3}\s[0-9]{2}\s[0-9]{2}$", RegexOptions.Compiled);
-        private static readonly Regex EmailRegex = new Regex(@"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$", RegexOptions.Compiled);
-
+        // İŞ KURALI: Telefon ve e-posta zorunlu; faks isteğe bağlıdır (nullable)
         public override RuleResult Evaluate(InternshipDocument document, StudentDatasetRecord? dbRecord)
         {
-            string phone = document.PhoneNumber?.Trim() ?? string.Empty;
-            string email = document.Email?.Trim() ?? string.Empty;
-
-            // İkisinin de bulunması zorunludur
-            if (string.IsNullOrWhiteSpace(phone) && string.IsNullOrWhiteSpace(email))
+            if (string.IsNullOrWhiteSpace(document.PhoneNumber))
             {
-                return Error(RuleName, Category, "Hem Telefon hem de E-posta bilgisi eksik. İkisinin de bulunması zorunludur.", "Telefon (+90 xxx xxx xx xx) ve e-posta adresinizi giriniz.", "PhoneNumber");
+                return Error(RuleName, Category, "Telefon numarası boş bırakılamaz.", "Telefon giriniz.", "PhoneNumber");
             }
 
-            if (string.IsNullOrWhiteSpace(phone))
+            if (!MatchRegex(document.PhoneNumber, @"^(\+90|0)?\s*[1-9]\d{2}\s*\d{3}\s*\d{2}\s*\d{2}$"))
             {
-                return Error(RuleName, Category, "Telefon numarası eksik. Telefon girilmesi zorunludur.", "+90 xxx xxx xx xx formatında telefon giriniz.", "PhoneNumber");
+                return Warning(
+                    RuleName, 
+                    Category, 
+                    "Telefon numarası Türkiye standartlarında (+90 5XX XXX XX XX) formatında olmalıdır.",
+                    "Örn: +90 532 111 22 33",
+                    "PhoneNumber"
+                );
             }
 
-            if (string.IsNullOrWhiteSpace(email))
+            if (string.IsNullOrWhiteSpace(document.Email))
             {
-                return Error(RuleName, Category, "E-posta adresi eksik. E-posta girilmesi zorunludur.", "ad@alanadi.uzanti formatında e-posta giriniz.", "Email");
+                return Error(RuleName, Category, "E-posta adresi boş bırakılamaz.", "E-posta giriniz.", "Email");
             }
 
-            // Telefon formatı: +90 xxx xxx xx xx
-            if (!PhoneRegex.IsMatch(phone))
+            if (!MatchRegex(document.Email, @"^[^@\s]+@[^@\s]+\.[^@\s]+$"))
             {
-                return Error(RuleName, Category, $"Telefon numarası geçersiz: '{phone}'. Beklenen format: +90 xxx xxx xx xx", "Örnek: +90 532 123 45 67 şeklinde yazınız.", "PhoneNumber");
+                return Error(RuleName, Category, "Geçersiz e-posta adresi formatı.", "Örn: ogrenci@ogr.kocaeli.edu.tr", "Email");
             }
 
-            // E-posta formatı
-            if (!EmailRegex.IsMatch(email))
-            {
-                return Error(RuleName, Category, $"E-posta adresi geçersiz formattadır: '{email}'.", "Örnek: ogrenci@ogr.kocaeli.edu.tr şeklinde geçerli e-posta yazınız.", "Email");
-            }
-
-            // Faks kontrolü: Boş bırakılabilir (nullable)
-            string faxMsg = string.IsNullOrWhiteSpace(document.FaxNumber)
-                ? "Faks boş bırakılmıştır (İsteğe bağlı kural sağlandı)."
-                : $"Faks girilmiştir: {document.FaxNumber}";
-
-            return Success(RuleName, Category, $"Telefon (+90 formatı) ve E-posta doğrulaması başarılı. {faxMsg}", "PhoneNumber");
+            return Success(RuleName, Category, "İletişim bilgileri kurala uygundur.", "PhoneNumber");
         }
     }
 }

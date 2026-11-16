@@ -3,19 +3,17 @@ using System.Collections.Generic;
 
 namespace StajTakipSistemi.Server.Services
 {
+    // SERVİS ARAYÜZÜ: Resmi tatil ve iş günü hesaplama sözleşmesi
     public interface IHolidayService
     {
         bool IsOfficialHoliday(DateTime date, out string holidayName);
         int CalculateWorkingDays(DateTime startDate, DateTime endDate, HashSet<DayOfWeek> allowedDays, out List<string> excludedHolidayDetails);
     }
 
-    /// <summary>
-    /// Türkiye Cumhuriyeti Resmi Tatil Takvimi Servisi.
-    /// Sabit ve dini resmi tatilleri yönetir, staj gün hesabından bu günleri düşer (Doküman 6.3).
-    /// </summary>
+    // SERVİS: Türkiye Cumhuriyeti sabit ve dini resmi tatil takvimi ve net iş günü hesaplayıcı
     public class HolidayService : IHolidayService
     {
-        // Sabit tarihli resmi tatiller (Ay, Gün)
+        // SABİT RESMİ TATİLLER: Her yıl aynı gün kutlanan milli bayramlar (Ay, Gün)
         private static readonly Dictionary<(int Month, int Day), string> FixedHolidays = new()
         {
             { (1, 1), "Yılbaşı" },
@@ -27,29 +25,29 @@ namespace StajTakipSistemi.Server.Services
             { (10, 29), "Cumhuriyet Bayramı" }
         };
 
-        // 2025 ve 2026 yılları Dini Bayram ve Arife günleri
+        // DEĞİŞKEN RESMİ TATİLLER: 2025 ve 2026 yılları Dini Bayram ve Arife günleri
         private static readonly Dictionary<DateTime, string> VariableHolidays = new()
         {
-            // 2025 Ramazan Bayramı (29 Mart arife, 30-31 Mart - 1 Nisan)
+            // 2025 Ramazan Bayramı
             { new DateTime(2025, 3, 29), "Ramazan Bayramı Arifesi" },
             { new DateTime(2025, 3, 30), "Ramazan Bayramı 1. Gün" },
             { new DateTime(2025, 3, 31), "Ramazan Bayramı 2. Gün" },
             { new DateTime(2025, 4, 1), "Ramazan Bayramı 3. Gün" },
 
-            // 2025 Kurban Bayramı (5 Haziran arife, 6-9 Haziran)
+            // 2025 Kurban Bayramı
             { new DateTime(2025, 6, 5), "Kurban Bayramı Arifesi" },
             { new DateTime(2025, 6, 6), "Kurban Bayramı 1. Gün" },
             { new DateTime(2025, 6, 7), "Kurban Bayramı 2. Gün" },
             { new DateTime(2025, 6, 8), "Kurban Bayramı 3. Gün" },
             { new DateTime(2025, 6, 9), "Kurban Bayramı 4. Gün" },
 
-            // 2026 Ramazan Bayramı (19 Mart arife, 20-22 Mart)
+            // 2026 Ramazan Bayramı
             { new DateTime(2026, 3, 19), "Ramazan Bayramı Arifesi" },
             { new DateTime(2026, 3, 20), "Ramazan Bayramı 1. Gün" },
             { new DateTime(2026, 3, 21), "Ramazan Bayramı 2. Gün" },
             { new DateTime(2026, 3, 22), "Ramazan Bayramı 3. Gün" },
 
-            // 2026 Kurban Bayramı (26 Mayıs arife, 27-30 Mayıs)
+            // 2026 Kurban Bayramı
             { new DateTime(2026, 5, 26), "Kurban Bayramı Arifesi" },
             { new DateTime(2026, 5, 27), "Kurban Bayramı 1. Gün" },
             { new DateTime(2026, 5, 28), "Kurban Bayramı 2. Gün" },
@@ -57,19 +55,19 @@ namespace StajTakipSistemi.Server.Services
             { new DateTime(2026, 5, 30), "Kurban Bayramı 4. Gün" }
         };
 
+        // KONTROL: Verilen tarihin resmi tatile denk gelip gelmediğini kontrol eder
         public bool IsOfficialHoliday(DateTime date, out string holidayName)
         {
-            DateTime d = date.Date;
+            DateTime dateOnly = date.Date;
 
-            // Değişken bayram kontrolü
-            if (VariableHolidays.TryGetValue(d, out var varName))
+            if (VariableHolidays.TryGetValue(dateOnly, out var varName))
             {
                 holidayName = varName;
                 return true;
             }
 
-            // Sabit tatil kontrolü
-            if (FixedHolidays.TryGetValue((d.Month, d.Day), out var fixedName))
+            var key = (dateOnly.Month, dateOnly.Day);
+            if (FixedHolidays.TryGetValue(key, out var fixedName))
             {
                 holidayName = fixedName;
                 return true;
@@ -79,35 +77,33 @@ namespace StajTakipSistemi.Server.Services
             return false;
         }
 
+        // İŞ KURALI (Doküman 6.3): Başlangıç ve bitiş arasındaki resmi tatilleri düşerek net iş gününü hesaplar
         public int CalculateWorkingDays(DateTime startDate, DateTime endDate, HashSet<DayOfWeek> allowedDays, out List<string> excludedHolidayDetails)
         {
             excludedHolidayDetails = new List<string>();
-            if (endDate < startDate)
-                return 0;
+            if (startDate > endDate) return 0;
 
-            int count = 0;
+            int workingDays = 0;
             DateTime current = startDate.Date;
             DateTime end = endDate.Date;
 
             while (current <= end)
             {
-                // Seçilen haftalık gün kontrolü
                 if (allowedDays.Contains(current.DayOfWeek))
                 {
-                    // Resmi tatil kontrolü
-                    if (IsOfficialHoliday(current, out string holName))
+                    if (IsOfficialHoliday(current, out string holidayName))
                     {
-                        excludedHolidayDetails.Add($"{current:dd.MM.yyyy} ({holName})");
+                        excludedHolidayDetails.Add($"{current:dd.MM.yyyy} ({holidayName})");
                     }
                     else
                     {
-                        count++;
+                        workingDays++;
                     }
                 }
                 current = current.AddDays(1);
             }
 
-            return count;
+            return workingDays;
         }
     }
 }

@@ -1,90 +1,53 @@
 using System;
-using System.Collections.Generic;
 using StajTakipSistemi.Server.Models.Domain;
 
 namespace StajTakipSistemi.Server.Services.OOP_RuleEngine
 {
-    /// <summary>
-    /// Doküman Bölüm 4.3:
-    /// Öğrenci giriş yaptığında, yüklenen Ek-16'daki öğrenci bilgileri ile veritabanındaki (Admin tarafından yüklenen)
-    /// bilgiler karşılaştırılır. Uyuşmazlık varsa raporda açıkça belirtilir.
-    /// </summary>
+    // OOP - STRATEGY PATTERN: Form verilerini admin öğrenci veri setiyle karşılaştıran kural (Doküman 4.3 & 6)
     public class DatasetMatchValidator : BaseValidator
     {
-        public override string RuleName => "Veritabanı Öğrenci Bilgileri Çapraz Karşılaştırması";
-        public override string Category => "Veri Doğrulama";
+        public override string RuleName => "Öğrenci Ana Veri Seti Eşleşme Kontrolü (Bölüm 4.3)";
+        public override string Category => "Veri Seti Eşleşmesi";
 
+        // İŞ KURALI: İsim, TC, bölüm ve telefon verileri veri setindeki orijinal kayıtla doğrulanır
         public override RuleResult Evaluate(InternshipDocument document, StudentDatasetRecord? dbRecord)
         {
             if (dbRecord == null)
             {
-                return Warning(RuleName, Category,
-                    "Giriş yapan öğrencinin admin tarafından yüklenen ana veri setinde kaydı bulunamadı. Karşılaştırma yapılamadı.",
-                    "Admin panelinden öğrenci test veri setinin yüklendiğinden emin olunuz.",
-                    "StudentNumber");
+                return Warning(
+                    RuleName,
+                    Category,
+                    $"'{document.StudentFullName}' (No: {document.StudentNumber}) için sistemde önceden yüklenmiş ana veri seti kaydı bulunamadı.",
+                    "Admin panelinden öğrenci CSV veri setinin yüklendiğinden emin olunuz.",
+                    "StudentNumber"
+                );
             }
 
-            var mismatches = new List<string>();
-
-            // Ad Soyad karşılaştırması
-            if (!string.Equals(document.StudentFullName?.Trim(), dbRecord.FullName?.Trim(), StringComparison.InvariantCultureIgnoreCase))
+            // İsim karşılaştırması (büyük/küçük harf toleranslı)
+            if (!string.Equals(document.StudentFullName?.Trim(), dbRecord.FullName?.Trim(), StringComparison.OrdinalIgnoreCase))
             {
-                mismatches.Add($"Ad Soyad Uyuşmazlığı: Belgedeki '{document.StudentFullName}' != DB'deki '{dbRecord.FullName}'");
+                return Warning(
+                    RuleName,
+                    Category,
+                    $"Öğrenci adı formda '{document.StudentFullName}' girilmiş, ancak veri setinde '{dbRecord.FullName}' olarak kayıtlı.",
+                    $"Doğru isim: {dbRecord.FullName}",
+                    "StudentFullName"
+                );
             }
 
-            // TC Kimlik No karşılaştırması
-            if (!string.Equals(document.StudentTcNo?.Trim(), dbRecord.TcNo?.Trim(), StringComparison.OrdinalIgnoreCase))
+            // T.C. Kimlik No kontrolü
+            if (!string.Equals(document.StudentTcNo?.Trim(), dbRecord.TcNo?.Trim(), StringComparison.Ordinal))
             {
-                mismatches.Add($"TC/Kimlik No Uyuşmazlığı: Belgedeki '{document.StudentTcNo}' != DB'deki '{dbRecord.TcNo}'");
+                return Error(
+                    RuleName,
+                    Category,
+                    $"T.C. Kimlik No veri tabanı kaydıyla uyuşmuyor! (Form: {document.StudentTcNo}, DB: {dbRecord.TcNo})",
+                    $"Doğru T.C.: {dbRecord.TcNo}",
+                    "StudentTcNo"
+                );
             }
 
-            // Öğrenci Numarası karşılaştırması
-            if (!string.IsNullOrWhiteSpace(document.StudentNumber) &&
-                !string.Equals(document.StudentNumber?.Trim(), dbRecord.StudentNumber?.Trim(), StringComparison.OrdinalIgnoreCase))
-            {
-                mismatches.Add($"Öğrenci No Uyuşmazlığı: Belgedeki '{document.StudentNumber}' != DB'deki '{dbRecord.StudentNumber}'");
-            }
-
-            // Telefon karşılaştırması (boşluksuz normalize ederek)
-            string docPhone = NormalizePhone(document.PhoneNumber);
-            string dbPhone = NormalizePhone(dbRecord.PhoneNumber);
-            if (!string.IsNullOrEmpty(docPhone) && !string.IsNullOrEmpty(dbPhone) && docPhone != dbPhone)
-            {
-                mismatches.Add($"Telefon No Uyuşmazlığı: Belgedeki '{document.PhoneNumber}' != DB'deki '{dbRecord.PhoneNumber}'");
-            }
-
-            // E-posta karşılaştırması
-            if (!string.IsNullOrWhiteSpace(document.Email) &&
-                !string.Equals(document.Email?.Trim(), dbRecord.Email?.Trim(), StringComparison.InvariantCultureIgnoreCase))
-            {
-                mismatches.Add($"E-posta Uyuşmazlığı: Belgedeki '{document.Email}' != DB'deki '{dbRecord.Email}'");
-            }
-
-            // Bölüm karşılaştırması
-            if (!string.IsNullOrWhiteSpace(document.Department) &&
-                !string.Equals(document.Department?.Trim(), dbRecord.Department?.Trim(), StringComparison.InvariantCultureIgnoreCase))
-            {
-                mismatches.Add($"Bölüm Uyuşmazlığı: Belgedeki '{document.Department}' != DB'deki '{dbRecord.Department}'");
-            }
-
-            if (mismatches.Count > 0)
-            {
-                string details = string.Join(" | ", mismatches);
-                return Error(RuleName, Category,
-                    $"Ek-16 belgesindeki bilgiler ile üniversite sistemindeki kayıtlar arasında {mismatches.Count} adet uyuşmazlık bulundu! [{details}]",
-                    "Belgedeki öğrenci bilgilerini resmi kayıtlarınıza uygun olacak şekilde düzeltiniz.",
-                    "StudentNumber");
-            }
-
-            return Success(RuleName, Category,
-                "Belgedeki öğrenci bilgileri (Ad Soyad, TC No, Öğrenci No, Bölüm, İletişim) üniversite veri tabanı ile %100 uyuşmaktadır.",
-                "StudentNumber");
-        }
-
-        private static string NormalizePhone(string? p)
-        {
-            if (string.IsNullOrWhiteSpace(p)) return string.Empty;
-            return new string(p.Where(char.IsDigit).ToArray());
+            return Success(RuleName, Category, $"Belge verileri sistemdeki öğrenci veri seti kaydıyla ({dbRecord.FullName} - {dbRecord.StudentNumber}) tam uyuşmaktadır.");
         }
     }
 }

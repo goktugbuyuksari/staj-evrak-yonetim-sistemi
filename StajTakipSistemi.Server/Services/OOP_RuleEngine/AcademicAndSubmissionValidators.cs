@@ -4,97 +4,68 @@ using StajTakipSistemi.Server.Models.Domain;
 
 namespace StajTakipSistemi.Server.Services.OOP_RuleEngine
 {
-    /// <summary>
-    /// Doküman Bölüm 6.3:
-    /// Öğretim yılı tutarlılığı: Örn. "2025-2026 Bahar" şeklinde ardışık yıl olmalı,
-    /// staj tarihleri de bu öğretim yılı ile uyumlu olmalıdır. Teslim edilen yarıyıl bilgisi yer almalıdır.
-    /// </summary>
+    // OOP - STRATEGY PATTERN: Öğretim yılı ve dönemi formatını doğrulayan kural (Doküman 6.1)
     public class AcademicTermValidator : BaseValidator
     {
-        public override string RuleName => "Öğretim Yılı ve Yarıyıl Tutarlılığı Kontrolü";
-        public override string Category => "Mantık ve Tarih Kontrolleri";
+        public override string RuleName => "Öğretim Yılı ve Dönem Kontrolü (Kısıt 6.1)";
+        public override string Category => "Akademik";
 
-        private static readonly Regex TermRegex = new Regex(@"^(\d{4})-(\d{4})\s+(Güz|Bahar|Yaz)$", RegexOptions.IgnoreCase);
-
+        // İŞ KURALI: 2025-2026 gibi ardışık yıl ve Güz/Bahar/Yaz dönemi kontrolü
         public override RuleResult Evaluate(InternshipDocument document, StudentDatasetRecord? dbRecord)
         {
-            string academicYear = document.AcademicYear?.Trim() ?? string.Empty;
-
-            if (string.IsNullOrWhiteSpace(academicYear))
+            if (string.IsNullOrWhiteSpace(document.AcademicYear))
             {
-                return Error(RuleName, Category, "Öğretim yılı ve yarıyıl bilgisi boş bırakılamaz.", "Örnek format: '2025-2026 Bahar' veya '2025-2026 Yaz'", "AcademicYear");
+                return Error(RuleName, Category, "Öğretim yılı ve dönemi boş bırakılamaz.", "Örn: 2025-2026 Bahar", "AcademicYear");
             }
 
-            var match = TermRegex.Match(academicYear);
+            var match = Regex.Match(document.AcademicYear.Trim(), @"^(\d{4})\s*-\s*(\d{4})\s+(Güz|Bahar|Yaz)$", RegexOptions.IgnoreCase);
             if (!match.Success)
             {
-                return Error(RuleName, Category, $"Öğretim yılı formatı geçersiz: '{academicYear}'. Beklenen format: 'YYYY-YYYY Dönem' (Örn: 2025-2026 Bahar)", "Örnek: 2025-2026 Bahar", "AcademicYear");
+                return Error(RuleName, Category, "Öğretim yılı formatı 'YYYY-YYYY Dönem' şeklinde olmalıdır.", "Örn: 2025-2026 Bahar", "AcademicYear");
             }
 
-            int startYear = int.Parse(match.Groups[1].Value);
-            int endYear = int.Parse(match.Groups[2].Value);
-            string term = match.Groups[3].Value;
-
-            // Ardışık yıl kontrolü: 2025 ve 2026 ardışık olmalı (endYear == startYear + 1)
-            if (endYear != startYear + 1)
+            int y1 = int.Parse(match.Groups[1].Value);
+            int y2 = int.Parse(match.Groups[2].Value);
+            if (y2 != y1 + 1)
             {
-                return Error(RuleName, Category, $"Öğretim yılları ardışık olmalıdır: {startYear}-{endYear} ardışık değil.", $"Örnek: {startYear}-{startYear + 1} {term}", "AcademicYear");
+                return Error(RuleName, Category, "Öğretim yılı yılları ardışık olmalıdır (Örn: 2025-2026).", "Yılları ardışık giriniz.", "AcademicYear");
             }
 
-            // Staj başlangıç tarihinin öğretim yılı ile uyumu
-            if (document.StartDate != default)
-            {
-                int internStartYear = document.StartDate.Year;
-                // Staj genellikle startYear veya endYear içinde başlar
-                if (internStartYear < startYear || internStartYear > endYear + 1)
-                {
-                    return Error(RuleName, Category, $"Staj başlangıç tarihi ({document.StartDate:dd.MM.yyyy}), beyan edilen öğretim yılı ({academicYear}) ile uyuşmuyor.", $"Staj tarihini {startYear}-{endYear} dönemine uygun seçiniz.", "StartDate");
-                }
-            }
-
-            return Success(RuleName, Category, $"Öğretim yılı ({academicYear}) ardışık yıl ve staj tarihleri ile uyumludur.", "AcademicYear");
+            return Success(RuleName, Category, $"Öğretim yılı ve dönem kurala uygundur ({document.AcademicYear}).", "AcademicYear");
         }
     }
 
-    /// <summary>
-    /// Doküman Bölüm 6.3:
-    /// Teslim tarihi: Belge, staj başlangıç tarihinden en az 30 gün önce teslim edilmelidir.
-    /// Sistem uygun değilse önerilen teslim tarihini gösterir.
-    /// </summary>
+    // OOP - STRATEGY PATTERN: Staj başvurusunun 30 gün önceden yapılma kuralını doğrulayan sınıf (Doküman 6.2)
     public class SubmissionDateValidator : BaseValidator
     {
-        public override string RuleName => "Teslim Tarihi ve 30 Gün Kuralı Kontrolü";
-        public override string Category => "Mantık ve Tarih Kontrolleri";
+        public override string RuleName => "30 Gün Önceden Teslim Kuralı (Kısıt 6.2)";
+        public override string Category => "Tarih";
 
+        // İŞ KURALI: Teslim tarihi staj başlangıcından en az 30 gün önce olmalıdır
         public override RuleResult Evaluate(InternshipDocument document, StudentDatasetRecord? dbRecord)
         {
             if (document.StartDate == default)
             {
-                return Error(RuleName, Category, "Staj başlangıç tarihi belirtilmemiştir.", "Staj başlangıç tarihini seçiniz.", "StartDate");
+                return Error(RuleName, Category, "Staj başlangıç tarihi belirtilmelidir.", field: "StartDate");
             }
 
-            DateTime submissionDate = document.SubmissionDate != default ? document.SubmissionDate.Date : DateTime.Today;
-            DateTime startDate = document.StartDate.Date;
+            DateTime submission = document.SubmissionDate != default ? document.SubmissionDate.Date : DateTime.Today;
+            DateTime start = document.StartDate.Date;
 
-            // En az 30 gün önce kuralı: (startDate - submissionDate).TotalDays >= 30
-            TimeSpan difference = startDate - submissionDate;
-            int daysBefore = (int)difference.TotalDays;
-
-            // Önerilen teslim tarihi: Staj başlangıcından 30 gün öncesi
-            DateTime recommendedSubmissionDate = startDate.AddDays(-30);
-
-            if (daysBefore < 30)
+            int daysDifference = (start - submission).Days;
+            if (daysDifference < 30)
             {
-                string recStr = recommendedSubmissionDate.ToString("dd.MM.yyyy");
-                return Error(RuleName, Category,
-                    $"Belge teslim tarihi ({submissionDate:dd.MM.yyyy}), staj başlangıç tarihinden ({startDate:dd.MM.yyyy}) yalnızca {daysBefore} gün öncedir! Kural gereği belge en az 30 gün önce teslim edilmelidir.",
-                    $"Sistem Tarafından Önerilen En Geç Teslim Tarihi: {recStr}",
-                    "SubmissionDate");
+                string suggestedDate = start.AddDays(-30).ToString("dd.MM.yyyy");
+                return Error(
+                    RuleName, 
+                    Category, 
+                    $"Staj evrakı staj başlangıç tarihinden en az 30 gün önce teslim edilmelidir! (Mevcut fark: {daysDifference} gün)", 
+                    $"Önerilen en geç teslim tarihi: {suggestedDate}",
+                    "SubmissionDate"
+                );
             }
 
-            return Success(RuleName, Category,
-                $"Teslim tarihi kuralı sağlandı. Belge staj başlangıcından {daysBefore} gün önce (en az 30 gün kuralına uygun) teslim edilmiştir.",
-                "SubmissionDate");
+            return Success(RuleName, Category, $"Evrak teslim tarihi staj başlangıcından {daysDifference} gün öncedir (30 gün şartı sağlandı).", "SubmissionDate");
         }
     }
 }

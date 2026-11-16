@@ -1,99 +1,97 @@
+using System;
 using StajTakipSistemi.Server.Models.Domain;
 
 namespace StajTakipSistemi.Server.Services.OOP_RuleEngine
 {
-    /// <summary>
-    /// Doküman Bölüm 6.4:
-    /// İşveren / İmza / Onay Alanları:
-    /// Öğrenci onay kısmı: Boş olmalı
-    /// Staj danışmanı onay kısmı: Boş olmalı
-    /// İşveren kısmı: Tamamen dolu, kaşe + imza dahil
-    /// </summary>
+    // OOP - STRATEGY PATTERN: İşveren, danışman ve öğrenci imza/onay durumunu denetleyen kural (Doküman 6.4)
     public class EmployerApprovalValidator : BaseValidator
     {
-        public override string RuleName => "İmza, Kaşe ve Onay Alanları Kontrolü";
-        public override string Category => "Onay ve İmza Denetimi";
+        public override string RuleName => "İşveren Onay ve İmza Kontrolü (Kısıt 6.4)";
+        public override string Category => "Onay";
 
+        // İŞ KURALI: İşveren imza/kaşesi zorunludur; öğrenci ve danışman imzası başvuru anında boş olmalıdır
         public override RuleResult Evaluate(InternshipDocument document, StudentDatasetRecord? dbRecord)
         {
-            // Öğrenci onay kısmı boş olmalı
-            if (document.HasStudentSignature)
-            {
-                return Error(RuleName, Category,
-                    "Başvuru aşamasındaki Ek-16 belgesinde 'Öğrenci Onay Kısmı' boş olmalıdır! Önceden imzalanmamalıdır.",
-                    "Öğrenci onay imzasını kaldırınız.",
-                    "HasStudentSignature");
-            }
-
-            // Staj danışmanı onay kısmı boş olmalı
-            if (document.HasAdvisorSignature)
-            {
-                return Error(RuleName, Category,
-                    "Başvuru aşamasındaki Ek-16 belgesinde 'Staj Danışmanı Onay Kısmı' boş olmalıdır!",
-                    "Danışman imza alanını boş bırakınız.",
-                    "HasAdvisorSignature");
-            }
-
-            // İşveren kısmı tamamen dolu, kaşe + imza dahil olmalıdır
             if (!document.HasEmployerSignatureAndStamp)
             {
-                return Error(RuleName, Category,
-                    "İşveren onay alanı eksik! Belgede işverenin onayı, yetkili imzası ve şirket kaşesi zorunludur.",
-                    "Kurum yetkilisinden kaşe ve imza alarak belgeyi yeniden yükleyiniz.",
-                    "HasEmployerSignatureAndStamp");
+                return Error(
+                    RuleName, 
+                    Category, 
+                    "Kurum/İşveren yetkilisinin imza ve kaşesi olmadan Ek-16 staj belgesi kabul edilemez!", 
+                    "Belgenin kurum yetkilisi tarafından kaşelenip imzalandığından emin olunuz.",
+                    "HasEmployerSignatureAndStamp"
+                );
             }
 
-            if (string.IsNullOrWhiteSpace(document.CompanyName))
+            if (document.HasStudentSignature)
             {
-                return Error(RuleName, Category, "İşyeri / Kurum ticari unvanı boş bırakılamaz.", "Şirket adını yazınız.", "CompanyName");
+                return Warning(
+                    RuleName, 
+                    Category, 
+                    "Öğrenci imza alanı işaretli. Ek-16 teslim aşamasında öğrenci imzasının daha sonra atılması tavsiye edilir.",
+                    suggestion: null,
+                    field: "HasStudentSignature"
+                );
             }
 
-            return Success(RuleName, Category,
-                "İmza ve onay alanları kurala uygundur (Öğrenci ve Danışman onayı boş, İşveren imza ve kaşesi tam).",
-                "HasEmployerSignatureAndStamp");
+            if (document.HasAdvisorSignature)
+            {
+                return Warning(
+                    RuleName, 
+                    Category, 
+                    "Bölüm staj komisyonu/danışman onay alanı işaretli. Bu alan teslim anında boş olmalıdır.",
+                    "Danışman imza alanını boş bırakınız.",
+                    "HasAdvisorSignature"
+                );
+            }
+
+            return Success(RuleName, Category, "İşveren onay ve imza kuralı başarıyla sağlandı.", "HasEmployerSignatureAndStamp");
         }
     }
 
-    /// <summary>
-    /// Doküman Bölüm 6.5:
-    /// Mühendis Sayısı Kuralı:
-    /// - Mühendis sayısı en az 1 olmalıdır.
-    /// - Mühendis sayısı 5'in altında ise, mühendisin mezun olduğu bölümü soran uyarı kutucuğu gösterilir.
-    /// </summary>
+    // OOP - STRATEGY PATTERN: Kurumdaki mühendis sayısını ve mezuniyet alanını denetleyen kural (Doküman 6.5)
     public class EngineerCountValidator : BaseValidator
     {
-        public override string RuleName => "Mühendis Sayısı ve Mezuniyet Kontrolü";
-        public override string Category => "İşyeri Kriterleri";
+        public override string RuleName => "Kurum Mühendis Sayısı ve Bölüm Kuralı (Kısıt 6.5)";
+        public override string Category => "Kurum";
 
+        // İŞ KURALI: Mühendis sayısı en az 1 olmalı; 5'in altındaysa mühendisin mezun olduğu bölüm zorunludur
         public override RuleResult Evaluate(InternshipDocument document, StudentDatasetRecord? dbRecord)
         {
-            int count = document.EngineerCount;
-
-            if (count < 1)
+            if (document.EngineerCount < 1)
             {
-                return Error(RuleName, Category,
-                    "Staj yapılacak kurumda en az 1 mühendis bulunması zorunludur! Mevcut mühendis sayısı: 0",
-                    "En az 1 mühendisin görev yaptığı bir kurum seçilmelidir.",
-                    "EngineerCount");
+                return Error(
+                    RuleName, 
+                    Category, 
+                    "Staj yapılacak kurumda en az 1 mühendis bulunmalıdır!", 
+                    "Kurumdaki mühendis sayısını belirtiniz.",
+                    "EngineerCount"
+                );
             }
 
-            if (count < 5)
+            if (document.EngineerCount < 5)
             {
-                // 5'in altında ise mezun olduğu bölüm uyarısı
                 if (string.IsNullOrWhiteSpace(document.EngineerGraduationDepartment))
                 {
-                    return Warning(RuleName, Category,
-                        $"Kurumdaki mühendis sayısı 5'in altındadır ({count} mühendis). Kural gereği kurumdaki mühendisin mezun olduğu bölümün belirtilmesi zorunludur.",
-                        "Lütfen kurumdaki sorumlu mühendisin mezun olduğu bölümü belirtiniz (Örn: Bilgisayar Mühendisliği, Yazılım Mühendisliği).",
-                        "EngineerGraduationDepartment");
+                    return Error(
+                        RuleName, 
+                        Category, 
+                        "Kurumdaki mühendis sayısı 5'in altında olduğu için mühendisin mezun olduğu bölümün belirtilmesi zorunludur! (Kural 6.5)", 
+                        "Örn: Bilgisayar Mühendisliği veya Yazılım Mühendisliği",
+                        "EngineerGraduationDepartment"
+                    );
                 }
 
-                return Success(RuleName, Category,
-                    $"Mühendis sayısı ({count}) 5'in altında olduğu için ek mezuniyet alanı sorgulanmış ve doldurulmuştur: '{document.EngineerGraduationDepartment}'.",
-                    "EngineerGraduationDepartment");
+                return Warning(
+                    RuleName, 
+                    Category, 
+                    $"Kurumdaki mühendis sayısı 5'in altında ({document.EngineerCount}). Mühendis mezuniyet bölümü: {document.EngineerGraduationDepartment}.",
+                    "Staj komisyonunun mühendislik alanı uygunluğunu onaylaması gerekmektedir.",
+                    "EngineerCount"
+                );
             }
 
-            return Success(RuleName, Category, $"Kurumda {count} mühendis bulunmaktadır (Kriter başarıyla sağlandı).", "EngineerCount");
+            return Success(RuleName, Category, $"Kurumda {document.EngineerCount} mühendis bulunmaktadır (Kural 6.5 sağlandı).", "EngineerCount");
         }
     }
 }
